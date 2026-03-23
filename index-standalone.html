@@ -86,6 +86,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .btn{border:none;cursor:pointer;border-radius:6px;font-size:12px;font-weight:600;transition:opacity .15s}
 .btn:hover{opacity:.82}
 .collapse{overflow:hidden;transition:max-height .35s ease,opacity .3s ease}
+@keyframes typingDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
@@ -149,24 +150,134 @@ function TopNav({onAIClick,aiActive}){
   );
 }
 
-/* ══════════════════ AGENT DIALOGUE BOX ══════════════════════════ */
-function AgentDialogueBox(){
-  const MSGS=[
-    {title:'Agent Dialogue Box',body:'Agent Dialogue Box、Agent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue Box'},
-    {title:'Agent Dialogue Box',body:'Agent Dialogue Box、Agent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue BoxAgent Dialogue Box'},
-  ];
+/* ══════════════════ AI CHAT PANEL ═══════════════════════════════ */
+const AI_REPLIES={
+  'default':[
+    "I'm analyzing the current building data. Floor 11F is showing optimal energy usage at **152 kWh** — 24% below the building average. Would you like me to apply similar optimization patterns to other floors?",
+    "Based on real-time sensor data, I've identified **3 optimization opportunities** across the building. The most impactful is adjusting HVAC schedules on floors 14-16 during off-peak hours.",
+    "Current building efficiency score: **78/100**. Implementing the AI suggestions could improve this to **94/100**, saving approximately **$4,300/month** in energy costs.",
+  ],
+  'energy':"**Energy Analysis:**\n\nCurrent daily consumption is **335 kWh**, with peak usage between 10:00–14:00. After applying AI optimization:\n\n• HVAC: –18% savings\n• Lighting: –12% savings\n• Equipment: –9% savings\n\nProjected monthly savings: **$4,300** and **135 kg CO₂** reduction.",
+  'floor':"**Floor 11F Status:**\n\n✅ Energy: 152 kWh (optimized)\n✅ Occupancy: 87% during business hours\n✅ Air quality: Good (CO₂: 420 ppm)\n⚠️ Temperature variance: +1.2°C vs setpoint\n\nRecommendation: Minor HVAC adjustment needed.",
+  'alert':"**Active Alerts:**\n\n🔴 Floor 14F: Energy consumption 332 kWh — **38% above average**\n🟡 Floor 15F: Ventilation efficiency dropping\n🟢 Floors 11F–13F: All within normal range\n\nWould you like me to auto-apply corrections?",
+  'optimize':"I'll initiate the optimization sequence now.\n\n**Applying changes:**\n• Floor 14F: Reducing HVAC by 25% during 22:00–06:00 ✓\n• Floor 15F: Adjusting ventilation schedule ✓\n• Floor 16F: Enabling occupancy-based lighting ✓\n\nEstimated impact: **–$1,200/month** in savings. Changes will take effect within 15 minutes.",
+  'report':"**Weekly Summary Report:**\n\n📊 Total consumption: **1,437 kWh**\n📈 vs last week: –8.3%\n💰 Cost savings: **$2,400**\n🌿 CO₂ reduced: **89 kg**\n\nTop performer: **Floor 11F** (–24% vs baseline)\nNeeds attention: **Floor 14F** (overuse pattern detected)\n\nFull report exported to dashboard.",
+};
+const QUICK_PROMPTS=[
+  {label:'⚡ Energy status',key:'energy'},
+  {label:'🏢 Floor 11F details',key:'floor'},
+  {label:'🔔 Check alerts',key:'alert'},
+  {label:'🤖 Auto-optimize',key:'optimize'},
+  {label:'📊 Weekly report',key:'report'},
+];
+function AIChatPanel({onClose}){
+  const [msgs,setMsgs]=useState([
+    {role:'assistant',text:"Hello! I'm your **Smart City AI Assistant**.\n\nI'm monitoring **7 floors** in real-time and have detected optimization opportunities that could save up to **25% energy**.\n\nHow can I help you today?",ts:Date.now()-60000},
+  ]);
+  const [input,setInput]=useState('');
+  const [typing,setTyping]=useState(false);
+  const bottomRef=useRef(null);
+  const inputRef=useRef(null);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[msgs,typing]);
+  function sendMsg(text){
+    const t=text.trim();
+    if(!t||typing) return;
+    setMsgs(prev=>[...prev,{role:'user',text:t,ts:Date.now()}]);
+    setInput('');
+    setTyping(true);
+    const lower=t.toLowerCase();
+    let reply=AI_REPLIES.default[Math.floor(Math.random()*AI_REPLIES.default.length)];
+    if(lower.includes('energy')||lower.includes('consumption')||lower.includes('kw')) reply=AI_REPLIES.energy;
+    else if(lower.includes('floor')||lower.includes('11f')||lower.includes('14f')) reply=AI_REPLIES.floor;
+    else if(lower.includes('alert')||lower.includes('warning')||lower.includes('alarm')) reply=AI_REPLIES.alert;
+    else if(lower.includes('optim')||lower.includes('apply')||lower.includes('fix')) reply=AI_REPLIES.optimize;
+    else if(lower.includes('report')||lower.includes('summary')||lower.includes('week')) reply=AI_REPLIES.report;
+    setTimeout(()=>{
+      setTyping(false);
+      setMsgs(prev=>[...prev,{role:'assistant',text:reply,ts:Date.now()}]);
+    },1200+Math.random()*800);
+  }
+  function renderText(t){
+    return t.split('\n').map((line,i)=>{
+      const parts=line.split(/(\*\*[^*]+\*\*)/g);
+      return <span key={i}>{parts.map((p,j)=>p.startsWith('**')&&p.endsWith('**')?<strong key={j}>{p.slice(2,-2)}</strong>:<span key={j}>{p}</span>)}{i<t.split('\n').length-1&&<br/>}</span>;
+    });
+  }
+  function fmtTime(ts){const d=new Date(ts);return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
   return(
-    <div style={{position:'absolute',right:0,top:0,width:280,height:'100%',background:'rgba(7,13,26,0.88)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',borderLeft:'1px solid var(--border)',display:'flex',flexDirection:'column',gap:8,padding:'12px 12px 12px 12px',overflowY:'auto',zIndex:20,animation:'slideInR .25s both'}} >
-      <div style={{height:40,display:'flex',alignItems:'center',gap:8}}>
-        <svg width="14" height="14" fill="none" stroke="var(--primary)" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        <span style={{fontSize:16,fontWeight:600}}>Agent Dialogue Box</span>
-      </div>
-      {MSGS.map((m,i)=>(
-        <div key={i} style={{background:'rgba(13,24,41,0.9)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',display:'flex',flexDirection:'column',gap:6}}>
-          <p style={{fontSize:13,fontWeight:600}}>{m.title}</p>
-          <p style={{fontSize:11,color:'var(--muted)',lineHeight:1.6}}>{m.body}</p>
+    <div style={{position:'absolute',right:0,top:0,width:360,height:'100%',display:'flex',flexDirection:'column',background:'rgba(7,11,22,0.92)',backdropFilter:'blur(24px)',WebkitBackdropFilter:'blur(24px)',borderLeft:'1px solid rgba(99,102,241,0.25)',zIndex:20,animation:'slideInR .25s both'}}>
+      {/* Header */}
+      <div style={{padding:'0 16px',height:56,display:'flex',alignItems:'center',gap:10,borderBottom:'1px solid rgba(99,102,241,0.2)',background:'rgba(99,102,241,0.08)',flexShrink:0}}>
+        <div style={{width:34,height:34,borderRadius:10,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 16px rgba(99,102,241,0.5)'}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="white" opacity="0.9"/></svg>
         </div>
-      ))}
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0'}}>City AI Assistant</div>
+          <div style={{display:'flex',alignItems:'center',gap:5,marginTop:1}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:'#22c55e',boxShadow:'0 0 6px #22c55e'}}/>
+            <span style={{fontSize:10,color:'#64748b'}}>Online · Smart City v2.1</span>
+          </div>
+        </div>
+        <button onClick={onClose} style={{width:28,height:28,borderRadius:8,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',color:'#64748b',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,lineHeight:1}}>✕</button>
+      </div>
+      {/* Messages */}
+      <div style={{flex:1,overflowY:'auto',padding:'14px 14px 8px',display:'flex',flexDirection:'column',gap:12}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:'flex',flexDirection:'column',alignItems:m.role==='user'?'flex-end':'flex-start',gap:4}}>
+            {m.role==='assistant'&&(
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                <div style={{width:20,height:20,borderRadius:6,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                </div>
+                <span style={{fontSize:10,color:'#64748b',fontWeight:500}}>AI Assistant</span>
+              </div>
+            )}
+            <div style={{maxWidth:'85%',padding:'10px 13px',borderRadius:m.role==='user'?'14px 14px 4px 14px':'14px 14px 14px 4px',background:m.role==='user'?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(30,41,59,0.9)',border:m.role==='user'?'none':'1px solid rgba(99,102,241,0.2)',boxShadow:m.role==='user'?'0 2px 12px rgba(99,102,241,0.35)':'none'}}>
+              <p style={{fontSize:12,lineHeight:1.65,color:m.role==='user'?'#fff':'#cbd5e1',margin:0}}>{renderText(m.text)}</p>
+            </div>
+            <span style={{fontSize:9,color:'#334155',marginTop:1}}>{fmtTime(m.ts)}</span>
+          </div>
+        ))}
+        {typing&&(
+          <div style={{display:'flex',alignItems:'flex-start',gap:6}}>
+            <div style={{width:20,height:20,borderRadius:6,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:2}}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            </div>
+            <div style={{padding:'12px 14px',borderRadius:'14px 14px 14px 4px',background:'rgba(30,41,59,0.9)',border:'1px solid rgba(99,102,241,0.2)',display:'flex',gap:5,alignItems:'center'}}>
+              {[0,1,2].map(j=>(
+                <div key={j} style={{width:6,height:6,borderRadius:'50%',background:'#6366f1',animation:`typingDot 1.2s ${j*0.2}s infinite ease-in-out`}}/>
+              ))}
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef}/>
+      </div>
+      {/* Quick prompts */}
+      <div style={{padding:'8px 14px',display:'flex',gap:6,overflowX:'auto',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+        {QUICK_PROMPTS.map(p=>(
+          <button key={p.key} onClick={()=>sendMsg(p.label)} style={{flexShrink:0,padding:'5px 10px',borderRadius:20,background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,0.3)',color:'#a5b4fc',fontSize:10,fontWeight:500,cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}
+            onMouseEnter={e=>e.target.style.background='rgba(99,102,241,0.25)'}
+            onMouseLeave={e=>e.target.style.background='rgba(99,102,241,0.12)'}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {/* Input */}
+      <div style={{padding:'10px 14px 14px',flexShrink:0,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        <div style={{display:'flex',gap:8,alignItems:'flex-end',background:'rgba(15,23,42,0.8)',border:'1px solid rgba(99,102,241,0.3)',borderRadius:14,padding:'8px 8px 8px 14px',transition:'border-color .2s'}}
+          onFocus={()=>{}} >
+          <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(input);}}}
+            placeholder="Ask about energy, floors, alerts…"
+            rows={1}
+            style={{flex:1,background:'transparent',border:'none',outline:'none',resize:'none',color:'#e2e8f0',fontSize:12,lineHeight:1.5,fontFamily:'inherit',minHeight:20,maxHeight:80,overflowY:'auto'}}/>
+          <button onClick={()=>sendMsg(input)} disabled={!input.trim()||typing}
+            style={{width:32,height:32,borderRadius:9,background:input.trim()&&!typing?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(99,102,241,0.2)',border:'none',cursor:input.trim()&&!typing?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .2s',boxShadow:input.trim()&&!typing?'0 2px 8px rgba(99,102,241,0.4)':'none'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
+        <p style={{fontSize:9,color:'#334155',textAlign:'center',marginTop:6}}>Enter to send · Shift+Enter for new line</p>
+      </div>
     </div>
   );
 }
@@ -352,12 +463,14 @@ function SavingsChart(){
 }
 
 /* ══════════════════ 3D BUILDING ═════════════════════════════════ */
-function Building3D(){
+function Building3D({aiOpen=false}){
   const mountRef=useRef(null);
   const stRef=useRef({active:14,floors:FLOORS.map(f=>({...f,live:f.consumption,alert:false}))});
   const tipRef=useRef(null);
+  const aiOpenRef=useRef(aiOpen);
   const {setActive:setCtxActive,floors:ctxFloors,active:ctxActive}=useE();
 
+  useEffect(()=>{aiOpenRef.current=aiOpen;},[aiOpen]);
   useEffect(()=>{stRef.current.floors=ctxFloors;stRef.current.active=ctxActive;},[ctxFloors,ctxActive]);
 
   useEffect(()=>{
@@ -466,8 +579,15 @@ function Building3D(){
           tipRef.current.style.display='block';
         }
       }
+      // Smoothly center building in available area
+      // Left panel=400px always, AI panel=360px when open → offset=(leftW-rightW)/2
+      const targetOff=aiOpenRef.current?-20:-200;
+      curOff+=(targetOff-curOff)*0.08;
+      camera.setViewOffset(renderer.domElement.width,renderer.domElement.height,curOff,0,renderer.domElement.width,renderer.domElement.height);
+
       ctrl.update();renderer.render(scene,camera);
     }
+    let curOff=-200;
     animate();
 
     function onResize(){
@@ -533,13 +653,13 @@ function MapControls(){
 
 /* ══════════════════ CITY VIEW IMAGES ═══════════════════════════ */
 const VIEW_IMGS={
-  District:'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1920&q=80',
+  District:'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1920&q=80',
   Street:'https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1920&q=80',
 };
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
-function BuildingView(){
-  const [tab,setTab]=useState('Building');
+function BuildingView({aiOpen=false}){
+  const [tab,setTab]=useState('City');
   const isBuilding=tab==='Building';
   return(
     <div style={{position:'absolute',inset:0}}>
@@ -553,13 +673,15 @@ function BuildingView(){
           <div style={{position:'absolute',top:60,right:70,zIndex:10,background:'rgba(10,20,40,.85)',border:'1px solid rgba(255,255,255,.12)',borderRadius:6,padding:'5px 10px',fontSize:12,pointerEvents:'none'}}>
             Main Hospital Building
           </div>
-          <Building3D/>
+          <Building3D aiOpen={aiOpen}/>
           <FloorSelector/>
         </>
       ):(
         <div style={{position:'absolute',inset:0}}>
           {tab==='City'?(
             <video key="city-video" src="city-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
+          ):tab==='Street'?(
+            <video key="street-video" src="street-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           ):(
             <img src={VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           )}
@@ -582,14 +704,14 @@ function App(){
       <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
         <TopNav onAIClick={()=>setShowAgent(v=>!v)} aiActive={showAgent}/>
         <div style={{flex:1,position:'relative',overflow:'hidden'}}>
-          <BuildingView/>
+          <BuildingView aiOpen={showAgent}/>
           <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
             <AISuggestionPanel/>
             <EnergyChart/>
             <StatsCards/>
             <SavingsChart/>
           </div>
-          {showAgent&&<AgentDialogueBox/>}
+          {showAgent&&<AIChatPanel onClose={()=>setShowAgent(false)}/>}
         </div>
       </div>
     </EProvider>
