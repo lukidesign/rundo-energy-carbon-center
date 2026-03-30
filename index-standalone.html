@@ -677,6 +677,11 @@ function BuildingView({aiOpen=false}){
             <img src={VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           )}
           <div style={{position:'absolute',inset:0,background:'rgba(7,13,26,.15)'}}/>
+          {tab==='Building'&&(
+            <div style={{position:'absolute',top:'28%',left:'50%',transform:'translateX(-50%)',background:'rgba(8,16,36,0.82)',border:'1px solid rgba(255,255,255,0.18)',borderRadius:14,padding:'10px 28px',fontSize:16,fontWeight:500,color:'#fff',whiteSpace:'nowrap',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',pointerEvents:'none',zIndex:10,letterSpacing:'0.01em',boxShadow:'0 4px 24px rgba(0,0,0,0.45)'}}>
+              Main Hospital Building
+            </div>
+          )}
         </div>
       )}
       <MapControls/>
