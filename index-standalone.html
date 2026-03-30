@@ -66,7 +66,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#070d1a;--panel:rgba(7,13,26,0.72);--border:rgba(255,255,255,0.08);
+  --bg:#060c1a;--panel:rgba(10,17,34,0.92);--border:rgba(255,255,255,0.09);
   --primary:#3b82f6;--primary-light:#93c5fd;--green:#22c55e;--alert:#ef4444;
   --text:#ffffff;--muted:#94a3b8;--active-tab:#1e293b;
 }
@@ -301,7 +301,7 @@ function AISuggestionPanel(){
         <svg width="14" height="14" fill="none" stroke="var(--primary)" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         <span style={{fontSize:16,fontWeight:600}}>AI Suggestion</span>
       </div>
-      <div style={{background:'rgba(13,24,41,0.9)',borderRadius:12,padding:1}}>
+      <div style={{background:'rgba(10,17,34,0.94)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:1}}>
         <div className="collapse" style={{maxHeight:applied?0:400,opacity:applied?0:1}}>
           <div style={{padding:'16px 16px 12px'}}>
             <div style={{background:'rgba(59,130,246,.12)',border:'1px solid rgba(59,130,246,.25)',borderRadius:8,padding:'10px 12px',marginBottom:12}}>
@@ -356,7 +356,7 @@ function EnergyChart(){
       <div style={{height:40,display:'flex',alignItems:'center'}}>
         <span style={{fontSize:16,fontWeight:600}}>Energy Consumption</span>
       </div>
-      <div style={{background:'rgba(13,24,41,0.9)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 16px 0'}}>
+      <div style={{background:'rgba(10,17,34,0.94)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'16px 16px 0'}}>
         <div style={{display:'flex',gap:14,marginBottom:12}}>
           {[['var(--primary)','Currently'],['var(--primary-light)','After applying AI suggestions']].map(([c,l])=>(
             <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
@@ -432,7 +432,7 @@ function SavingsChart(){
       <div style={{height:40,display:'flex',alignItems:'center'}}>
         <span style={{fontSize:16,fontWeight:600}}>Monthly Savings</span>
       </div>
-      <div style={{background:'rgba(13,24,41,0.9)',border:'1px solid var(--border)',borderRadius:12,padding:'16px 16px 12px'}}>
+      <div style={{background:'rgba(10,17,34,0.94)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'16px 16px 12px'}}>
         <div style={{display:'flex',gap:16,marginBottom:12}}>
           {[['4.3k','$','Cost savings'],['2.4k','kWh','Energy savings'],['135','CO²','Emission']].map(([v,u,l])=>(
             <div key={l}>
@@ -744,7 +744,7 @@ function BuildingView({aiOpen=false,onToggle3D}){
   },[bFloor]);
   return(
     <div style={{position:'absolute',inset:0}}>
-      <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:4,zIndex:10,background:'rgba(13,24,41,.85)',border:'1px solid var(--border)',borderRadius:8,padding:4}}>
+      <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:4,backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)'}}>
         {['Campus','Building','Floor','Zone'].map(t=>{const a=t===tab;return(
           <button key={t} onClick={()=>setTab(t)} style={{padding:'5px 16px',borderRadius:5,fontSize:12,fontWeight:a?600:400,color:a?'#0d1829':'var(--muted)',background:a?'rgba(255,255,255,0.92)':'transparent',border:'none',cursor:'pointer'}}>{t}</button>
         );})}
