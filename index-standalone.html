@@ -66,7 +66,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#070d1a;--panel:rgba(13,24,41,0.92);--border:rgba(255,255,255,0.08);
+  --bg:#070d1a;--panel:rgba(7,13,26,0.72);--border:rgba(255,255,255,0.08);
   --primary:#3b82f6;--primary-light:#93c5fd;--green:#22c55e;--alert:#ef4444;
   --text:#ffffff;--muted:#94a3b8;--active-tab:#1e293b;
 }
@@ -100,10 +100,10 @@ const FLOORS=[
   {id:17,label:'17F',consumption:180,optimized:135,hl:false},
   {id:16,label:'16F',consumption:210,optimized:158,hl:false},
   {id:15,label:'15F',consumption:245,optimized:184,hl:false},
-  {id:14,label:'14F',consumption:332,optimized:204,hl:false},
+  {id:14,label:'14F',consumption:332,optimized:204,hl:true },
   {id:13,label:'13F',consumption:198,optimized:149,hl:false},
   {id:12,label:'12F',consumption:172,optimized:129,hl:false},
-  {id:11,label:'11F',consumption:152,optimized:116,hl:true },
+  {id:11,label:'11F',consumption:152,optimized:116,hl:false},
 ];
 const BAR=[
   {t:'06:00',c:144,o:220},{t:'',c:220,o:284},{t:'12:00',c:190,o:346},{t:'',c:151,o:262},
@@ -122,7 +122,7 @@ const useE=()=>useContext(ECtx);
 
 function EProvider({children}){
   const [floors,setFloors]=useState(()=>FLOORS.map(f=>({...f,live:f.consumption,alert:false})));
-  const [active,setActive]=useState(11);
+  const [active,setActive]=useState(14);
   useEffect(()=>{
     const id=setInterval(()=>{
       setFloors(prev=>prev.map(f=>{
@@ -476,32 +476,42 @@ function Building3D({aiOpen=false}){
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
     el.appendChild(renderer.domElement);
 
-    // Lights — bright enough to see the building clearly
-    scene.add(new THREE.AmbientLight(0x4466aa,3));
-    const dl=new THREE.DirectionalLight(0xaaccff,2.5);dl.position.set(5,12,5);scene.add(dl);
-    const dl2=new THREE.DirectionalLight(0x8899ff,1.2);dl2.position.set(-5,8,-3);scene.add(dl2);
-    const pl=new THREE.PointLight(0x3b82f6,6,20);pl.position.set(0,8,0);scene.add(pl);
-    const gl=new THREE.PointLight(0x22c55e,4,12);gl.position.set(0,2.5,0);scene.add(gl);
+    // Lights — holographic blue-white glow matching reference
+    scene.add(new THREE.AmbientLight(0x6688bb,4));
+    const dl=new THREE.DirectionalLight(0xbbddff,3);dl.position.set(5,14,5);scene.add(dl);
+    const dl2=new THREE.DirectionalLight(0x99bbff,1.8);dl2.position.set(-5,10,-3);scene.add(dl2);
+    const pl=new THREE.PointLight(0x4499ff,8,22);pl.position.set(0,8,0);scene.add(pl);
+    const gl=new THREE.PointLight(0x22c55e,5,14);gl.position.set(0,3,0);scene.add(gl);
+    const rim=new THREE.PointLight(0xaaccff,4,18);rim.position.set(-6,6,-4);scene.add(rim);
 
     // OrbitControls
     const ctrl=new THREE.OrbitControls(camera,renderer.domElement);
     ctrl.enablePan=false;ctrl.minPolarAngle=Math.PI/6;ctrl.maxPolarAngle=Math.PI/2.1;
     ctrl.minDistance=10;ctrl.maxDistance=28;ctrl.target.set(0,2,0);ctrl.update();
 
-    // Floors — tall enough to look like a proper building
+    // Floors — holographic translucent panels with edge grid lines
     const FH=0.55,FG=0.06,FW=4.2,FD=2.8;
     const meshes=[];
     FLOORS.forEach((f,i)=>{
       const mat=new THREE.MeshStandardMaterial({
-        color:f.hl?0x1a5a3a:0x1a3060,
-        emissive:f.hl?0x22c55e:0x3b82f6,
-        emissiveIntensity:f.hl?1.5:0.3,
-        transparent:true,opacity:0.9,roughness:0.15,metalness:0.5,
+        color:f.hl?0x0d3d20:0x1a3870,
+        emissive:f.hl?0x22c55e:0x5599ee,
+        emissiveIntensity:f.hl?2.2:0.55,
+        transparent:true,opacity:f.hl?0.92:0.78,
+        roughness:0.08,metalness:0.65,
       });
-      const mesh=new THREE.Mesh(new THREE.BoxGeometry(FW,FH,FD),mat);
+      const geo=new THREE.BoxGeometry(FW,FH,FD);
+      const mesh=new THREE.Mesh(geo,mat);
       mesh.position.set(0,i*(FH+FG)+FH/2,0);
       mesh.userData={id:f.id,hl:f.hl};
       scene.add(mesh);meshes.push(mesh);
+      // Edge lines — window grid effect
+      const edges=new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({color:f.hl?0x55ffaa:0x88ccff,transparent:true,opacity:f.hl?0.9:0.5})
+      );
+      edges.position.copy(mesh.position);
+      scene.add(edges);
     });
 
     // Base
@@ -651,7 +661,7 @@ function BuildingView({aiOpen=false}){
     <div style={{position:'absolute',inset:0}}>
       <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:4,zIndex:10,background:'rgba(13,24,41,.85)',border:'1px solid var(--border)',borderRadius:8,padding:4}}>
         {['City','District','Street','Building'].map(t=>{const a=t===tab;return(
-          <button key={t} onClick={()=>setTab(t)} style={{padding:'5px 16px',borderRadius:5,fontSize:12,fontWeight:a?600:400,color:a?'#fff':'var(--muted)',background:a?'var(--active-tab)':'transparent',border:'none',cursor:'pointer'}}>{t}</button>
+          <button key={t} onClick={()=>setTab(t)} style={{padding:'5px 16px',borderRadius:5,fontSize:12,fontWeight:a?600:400,color:a?'#0d1829':'var(--muted)',background:a?'rgba(255,255,255,0.92)':'transparent',border:'none',cursor:'pointer'}}>{t}</button>
         );})}
       </div>
       {isBuilding?(
@@ -675,9 +685,6 @@ function BuildingView({aiOpen=false}){
         </div>
       )}
       <MapControls/>
-      <p style={{position:'absolute',bottom:47,left:0,right:0,textAlign:'center',fontSize:14,fontWeight:600,color:'rgba(255,255,255,0.25)',whiteSpace:'nowrap',pointerEvents:'none',zIndex:10}}>
-        这是2026年3月23日，figma和claude code 联动生成的效果
-      </p>
     </div>
   );
 }
