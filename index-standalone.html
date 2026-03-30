@@ -771,7 +771,7 @@ function BuildingView({aiOpen=false,onToggle3D}){
               Main Hospital Building
             </a>
             <div style={{position:'absolute',left:420,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',gap:8,zIndex:10}}>
-              {[1,2,3,4,5,6,7].map(f=>(
+              {[7,6,5,4,3,2,1].map(f=>(
                 <button key={f} onClick={()=>setBFloor(f)} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,fontWeight:bFloor===f?700:400,color:bFloor===f?'var(--green)':'var(--muted)',padding:'2px 4px',transition:'color .15s'}}>{f}F</button>
               ))}
             </div>
