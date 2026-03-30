@@ -136,20 +136,6 @@ function EProvider({children}){
 }
 
 /* ══════════════════ TOP NAV ═════════════════════════════════════ */
-function TopNav({onAIClick,aiActive}){
-  return(
-    <nav style={{height:56,background:'rgba(7,13,26,0.55)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',borderBottom:'1px solid rgba(255,255,255,0.12)',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',flexShrink:0,zIndex:50,boxShadow:'0 1px 0 rgba(255,255,255,0.05)'}}>
-      <div style={{display:'flex',alignItems:'center',gap:8}}>
-        <div style={{width:28,height:28,borderRadius:6,background:'linear-gradient(135deg,#3b82f6,#22c55e)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <svg width="16" height="16" fill="none"><path d="M2 12L5 6L8 9L11 4L14 8" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
-        <span style={{fontSize:18,fontWeight:600,whiteSpace:'nowrap'}}>Smart City Platform</span>
-      </div>
-      <button onClick={onAIClick} style={{width:28,height:28,borderRadius:'50%',background:aiActive?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:600,border:aiActive?'1px solid rgba(139,92,246,.6)':'1px solid transparent',cursor:'pointer',color:'#fff',transition:'all .2s',boxShadow:aiActive?'0 0 12px rgba(139,92,246,.5)':'none'}}>AI</button>
-    </nav>
-  );
-}
-
 /* ══════════════════ AI CHAT PANEL ═══════════════════════════════ */
 const AI_REPLIES={
   'default':[
@@ -701,18 +687,16 @@ function App(){
   const [showAgent,setShowAgent]=useState(false);
   return(
     <EProvider>
-      <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
-        <TopNav onAIClick={()=>setShowAgent(v=>!v)} aiActive={showAgent}/>
-        <div style={{flex:1,position:'relative',overflow:'hidden'}}>
-          <BuildingView aiOpen={showAgent}/>
-          <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
-            <AISuggestionPanel/>
-            <EnergyChart/>
-            <StatsCards/>
-            <SavingsChart/>
-          </div>
-          {showAgent&&<AIChatPanel onClose={()=>setShowAgent(false)}/>}
+      <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
+        <BuildingView aiOpen={showAgent}/>
+        <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
+          <AISuggestionPanel/>
+          <EnergyChart/>
+          <StatsCards/>
+          <SavingsChart/>
         </div>
+        {showAgent&&<AIChatPanel onClose={()=>setShowAgent(false)}/>}
+        <button onClick={()=>setShowAgent(v=>!v)} style={{position:'absolute',top:16,right:16,zIndex:50,width:36,height:36,borderRadius:'50%',background:showAgent?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,border:showAgent?'1px solid rgba(139,92,246,.6)':'1px solid rgba(255,255,255,0.15)',cursor:'pointer',color:'#fff',transition:'all .2s',boxShadow:showAgent?'0 0 16px rgba(139,92,246,.6)':'0 2px 8px rgba(0,0,0,.4)'}}>AI</button>
       </div>
     </EProvider>
   );
