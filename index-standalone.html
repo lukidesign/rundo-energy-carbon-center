@@ -632,16 +632,93 @@ function FloorSelector(){
   );
 }
 
+/* ══════════════════ GLOBE 3D ════════════════════════════════════ */
+function Globe3D({onClose}){
+  const mountRef=useRef(null);
+  useEffect(()=>{
+    const el=mountRef.current;if(!el)return;
+    const W=el.clientWidth,H=el.clientHeight;
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(40,W/H,0.1,100);
+    camera.position.set(0,0,3.2);
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(W,H);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    el.appendChild(renderer.domElement);
+
+    const group=new THREE.Group();scene.add(group);
+
+    // Globe body
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(1,64,64),
+      new THREE.MeshPhongMaterial({color:0x0d2a5a,emissive:0x050f20,shininess:60})));
+    // Wireframe
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(1.002,28,28),
+      new THREE.MeshBasicMaterial({color:0x2266cc,wireframe:true,transparent:true,opacity:0.15})));
+    // Atmosphere glow
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.15,32,32),
+      new THREE.MeshBasicMaterial({color:0x1a44aa,transparent:true,opacity:0.08,side:THREE.BackSide})));
+
+    // Longitude meridians
+    for(let i=0;i<12;i++){
+      const pts=[];for(let j=0;j<=64;j++){const a=j/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a),Math.sin(a),0));}
+      const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:0x3388ff,transparent:true,opacity:0.22}));
+      l.rotation.y=i*Math.PI/6;group.add(l);
+    }
+    // Latitude parallels
+    [-60,-30,0,30,60].forEach(lat=>{
+      const r=Math.cos(lat*Math.PI/180),y=Math.sin(lat*Math.PI/180);
+      const pts=[];for(let i=0;i<=128;i++){const a=i/128*Math.PI*2;pts.push(new THREE.Vector3(r*Math.cos(a),y,r*Math.sin(a)));}
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:0x3388ff,transparent:true,opacity:lat===0?.38:.2})));
+    });
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0x334466,3));
+    const dl=new THREE.DirectionalLight(0x88ccff,4);dl.position.set(4,3,4);scene.add(dl);
+    const rl=new THREE.PointLight(0x2244aa,3,8);rl.position.set(-3,1,-2);scene.add(rl);
+
+    // Drag
+    let drag=false,lx=0,ly=0,ry=0,rx=0;
+    const d=renderer.domElement;
+    function dn(e){drag=true;lx=e.clientX;ly=e.clientY;}
+    function up(){drag=false;}
+    function mv(e){if(!drag)return;ry+=(e.clientX-lx)*.005;rx+=(e.clientY-ly)*.005;rx=Math.max(-1.1,Math.min(1.1,rx));lx=e.clientX;ly=e.clientY;}
+    d.addEventListener('mousedown',dn);d.addEventListener('mouseup',up);d.addEventListener('mouseleave',up);d.addEventListener('mousemove',mv);
+
+    let aid;
+    function animate(){
+      aid=requestAnimationFrame(animate);
+      if(!drag)ry+=.003;
+      group.rotation.y=ry;group.rotation.x=rx;
+      renderer.render(scene,camera);
+    }
+    animate();
+
+    function onR(){const w=el.clientWidth,h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+    window.addEventListener('resize',onR);
+    return()=>{cancelAnimationFrame(aid);window.removeEventListener('resize',onR);d.removeEventListener('mousedown',dn);d.removeEventListener('mouseup',up);d.removeEventListener('mouseleave',up);d.removeEventListener('mousemove',mv);renderer.dispose();if(el.contains(d))el.removeChild(d);};
+  },[]);
+
+  return(
+    <div ref={mountRef} style={{position:'fixed',inset:0,zIndex:100,background:'radial-gradient(ellipse at center,#061028 0%,#020810 100%)'}}>
+      <div style={{position:'absolute',top:20,left:'50%',transform:'translateX(-50%)',fontSize:12,fontWeight:600,color:'rgba(68,153,255,0.6)',letterSpacing:'0.15em',pointerEvents:'none',textTransform:'uppercase'}}>3D Globe View</div>
+      <div style={{position:'absolute',bottom:20,right:20,zIndex:101,display:'flex',flexDirection:'column',gap:12}}>
+        <button onClick={onClose} style={{width:44,height:32,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,background:'rgba(59,130,246,0.25)',border:'1px solid rgba(59,130,246,0.55)',color:'#93c5fd',fontSize:11,fontWeight:700,cursor:'pointer'}}>2D</button>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════ MAP CONTROLS ════════════════════════════════ */
 const bs={width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(13,24,41,.9)',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer'};
-function MapControls(){
+function MapControls({onToggle3D}){
   return(<>
     <div style={{position:'absolute',right:20,bottom:120,display:'flex',flexDirection:'column',gap:12,zIndex:10}}>
       <button style={bs}><svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       <button style={bs}><svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     </div>
     <div style={{position:'absolute',right:20,bottom:20,display:'flex',flexDirection:'column',gap:12,zIndex:10}}>
-      <button style={{...bs,fontSize:11,fontWeight:700,color:'var(--text)'}}>2D</button>
+      <button onClick={onToggle3D} style={{...bs,fontSize:11,fontWeight:700,color:'var(--text)'}}>3D</button>
       <button style={bs}><svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></button>
     </div>
   </>);
@@ -654,7 +731,7 @@ const VIEW_IMGS={
 };
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
-function BuildingView({aiOpen=false}){
+function BuildingView({aiOpen=false,onToggle3D}){
   const [tab,setTab]=useState('Campus');
   const [bFloor,setBFloor]=useState(1);
   const isBuilding=tab==='Floor';
@@ -690,7 +767,7 @@ function BuildingView({aiOpen=false}){
           </>)}
         </div>
       )}
-      <MapControls/>
+      <MapControls onToggle3D={onToggle3D}/>
     </div>
   );
 }
@@ -716,11 +793,13 @@ function IntroScreen({onDone}){
 function App(){
   const [intro,setIntro]=useState(true);
   const [showAgent,setShowAgent]=useState(false);
+  const [show3D,setShow3D]=useState(false);
   return(
     <EProvider>
       {intro&&<IntroScreen onDone={()=>setIntro(false)}/>}
+      {show3D&&<Globe3D onClose={()=>setShow3D(false)}/>}
       <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
-        <BuildingView aiOpen={showAgent}/>
+        <BuildingView aiOpen={showAgent} onToggle3D={()=>setShow3D(true)}/>
         <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
           <AISuggestionPanel/>
           <EnergyChart/>
