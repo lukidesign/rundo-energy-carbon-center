@@ -649,7 +649,8 @@ function MapControls(){
 
 /* ══════════════════ CITY VIEW IMAGES ═══════════════════════════ */
 const VIEW_IMGS={
-  Zone:'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1920&q=80',
+  Floor:'city-view.jpg',
+  Zone:'city-view.jpg',
 };
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
@@ -675,8 +676,6 @@ function BuildingView({aiOpen=false}){
         <div style={{position:'absolute',inset:0}}>
           {tab==='Campus'?(
             <video key="city-video" src="city-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
-          ):tab==='Floor'?(
-            <video key="street-video" src="street-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           ):(
             <img src={VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           )}
