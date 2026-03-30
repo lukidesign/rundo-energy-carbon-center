@@ -97,13 +97,13 @@ const {useState,useEffect,useRef,useCallback,createContext,useContext}=React;
 
 /* ══════════════════ MOCK DATA ══════════════════════════════════ */
 const FLOORS=[
-  {id:17,label:'17F',consumption:180,optimized:135,hl:false},
-  {id:16,label:'16F',consumption:210,optimized:158,hl:false},
-  {id:15,label:'15F',consumption:245,optimized:184,hl:false},
-  {id:14,label:'14F',consumption:332,optimized:204,hl:true },
-  {id:13,label:'13F',consumption:198,optimized:149,hl:false},
-  {id:12,label:'12F',consumption:172,optimized:129,hl:false},
-  {id:11,label:'11F',consumption:152,optimized:116,hl:false},
+  {id:7,label:'7F',consumption:180,optimized:135,hl:false},
+  {id:6,label:'6F',consumption:210,optimized:158,hl:false},
+  {id:5,label:'5F',consumption:245,optimized:184,hl:false},
+  {id:4,label:'4F',consumption:332,optimized:204,hl:false},
+  {id:3,label:'3F',consumption:198,optimized:149,hl:false},
+  {id:2,label:'2F',consumption:172,optimized:129,hl:true },
+  {id:1,label:'1F',consumption:152,optimized:116,hl:false},
 ];
 const BAR=[
   {t:'06:00',c:144,o:220},{t:'',c:220,o:284},{t:'12:00',c:190,o:346},{t:'',c:151,o:262},
@@ -122,12 +122,12 @@ const useE=()=>useContext(ECtx);
 
 function EProvider({children}){
   const [floors,setFloors]=useState(()=>FLOORS.map(f=>({...f,live:f.consumption,alert:false})));
-  const [active,setActive]=useState(14);
+  const [active,setActive]=useState(2);
   useEffect(()=>{
     const id=setInterval(()=>{
       setFloors(prev=>prev.map(f=>{
         const live=Math.round(f.consumption+(Math.random()*2-1)*f.consumption*0.05);
-        return {...f,live,alert:f.id===14&&live>350};
+        return {...f,live,alert:f.id===4&&live>350};
       }));
     },3000);
     return ()=>clearInterval(id);
