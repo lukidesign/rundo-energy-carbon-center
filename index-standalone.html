@@ -695,11 +695,30 @@ function BuildingView({aiOpen=false}){
   );
 }
 
+/* ══════════════════ INTRO SCREEN ════════════════════════════════ */
+function IntroScreen({onDone}){
+  const [fading,setFading]=useState(false);
+  function dismiss(){setFading(true);setTimeout(onDone,600);}
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,background:'#000',opacity:fading?0:1,transition:'opacity .6s ease',pointerEvents:fading?'none':'auto'}}>
+      <video src="city-view.mp4" autoPlay muted playsInline onEnded={dismiss}
+        style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+      <button onClick={dismiss} style={{position:'absolute',bottom:32,right:32,padding:'8px 24px',borderRadius:20,background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.28)',color:'#fff',fontSize:13,fontWeight:500,cursor:'pointer',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',letterSpacing:'0.02em',transition:'background .2s'}}
+        onMouseEnter={e=>e.target.style.background='rgba(255,255,255,0.22)'}
+        onMouseLeave={e=>e.target.style.background='rgba(255,255,255,0.12)'}>
+        Skip ›
+      </button>
+    </div>
+  );
+}
+
 /* ══════════════════ APP ══════════════════════════════════════════ */
 function App(){
+  const [intro,setIntro]=useState(true);
   const [showAgent,setShowAgent]=useState(false);
   return(
     <EProvider>
+      {intro&&<IntroScreen onDone={()=>setIntro(false)}/>}
       <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
         <BuildingView aiOpen={showAgent}/>
         <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
