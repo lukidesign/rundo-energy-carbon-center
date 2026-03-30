@@ -735,6 +735,7 @@ function BuildingView({aiOpen=false,onToggle3D}){
   const [tab,setTab]=useState('Building');
   const [bFloor,setBFloor]=useState(1);
   const [bImg,setBImg]=useState('building3d-mm.png');
+  const [bHover,setBHover]=useState(false);
   const isBuilding=tab==='Floor';
   useEffect(()=>{
     const img=new Image();
@@ -774,6 +775,36 @@ function BuildingView({aiOpen=false,onToggle3D}){
                 <button key={f} onClick={()=>setBFloor(f)} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,fontWeight:bFloor===f?700:400,color:bFloor===f?'var(--green)':'var(--muted)',padding:'2px 4px',transition:'color .15s'}}>{f}F</button>
               ))}
             </div>
+            {(()=>{
+              const floorData=FLOORS.find(f=>f.id===bFloor)||FLOORS[FLOORS.length-1];
+              // Green band top position: 1F=72%, 2F=64%, 3F=56%, 4F=48%, 5F=40%, 6F=32%, 7F=24%
+              const top=`${80-(bFloor-1)*8}%`;
+              const savings=Math.round((1-floorData.optimized/floorData.consumption)*100);
+              return(<>
+                <div
+                  onMouseEnter={()=>setBHover(true)}
+                  onMouseLeave={()=>setBHover(false)}
+                  style={{position:'absolute',left:'35%',width:'40%',top,height:'10%',zIndex:11,cursor:'default'}}
+                />
+                {bHover&&(
+                  <div style={{position:'absolute',left:'42%',top:`calc(${top} - 140px)`,zIndex:20,
+                    background:'rgba(10,17,34,0.92)',border:'1px solid rgba(255,255,255,0.12)',
+                    borderRadius:14,padding:'16px 20px',minWidth:200,
+                    backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)',
+                    boxShadow:'0 8px 32px rgba(0,0,0,0.5)',pointerEvents:'none'}}>
+                    <div style={{fontSize:18,fontWeight:700,marginBottom:8}}>{bFloor}F</div>
+                    <div style={{fontSize:12,color:'var(--muted)',marginBottom:2}}>Current consumption</div>
+                    <div style={{fontSize:20,fontWeight:700,marginBottom:8}}>{floorData.consumption} <span style={{fontSize:12,fontWeight:400,color:'var(--muted)'}}>kWh</span></div>
+                    <div style={{fontSize:12,color:'var(--muted)',marginBottom:2}}>After optimization</div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{floorData.optimized}</span>
+                      <span style={{fontSize:12,color:'var(--muted)'}}>kWh</span>
+                      <span className="badge-green" style={{fontSize:11}}>+{savings}% <span className="dot"/></span>
+                    </div>
+                  </div>
+                )}
+              </>);
+            })()}
           </>)}
         </div>
       )}
