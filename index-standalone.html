@@ -734,7 +734,14 @@ const VIEW_IMGS={
 function BuildingView({aiOpen=false,onToggle3D}){
   const [tab,setTab]=useState('Building');
   const [bFloor,setBFloor]=useState(1);
+  const [bImg,setBImg]=useState('building3d-mm.png');
   const isBuilding=tab==='Floor';
+  useEffect(()=>{
+    const img=new Image();
+    img.onload=()=>setBImg(img.naturalWidth>0?`building3d-l${bFloor}.png`:'building3d-mm.png');
+    img.onerror=()=>setBImg('building3d-mm.png');
+    img.src=`building3d-l${bFloor}.png`;
+  },[bFloor]);
   return(
     <div style={{position:'absolute',inset:0}}>
       <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:4,zIndex:10,background:'rgba(13,24,41,.85)',border:'1px solid var(--border)',borderRadius:8,padding:4}}>
@@ -752,7 +759,7 @@ function BuildingView({aiOpen=false,onToggle3D}){
           {tab==='Campus'?(
             <video key="city-video" src="city-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           ):(
-            <img src={tab==='Building'?({5:'building3d-l5.png'}[bFloor]||'building3d-mm.png'):VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
+            <img src={tab==='Building'?bImg:VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           )}
           <div style={{position:'absolute',inset:0,background:'rgba(7,13,26,.15)'}}/>
           {tab==='Building'&&(<>
