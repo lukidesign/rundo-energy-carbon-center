@@ -649,18 +649,17 @@ function MapControls(){
 
 /* ══════════════════ CITY VIEW IMAGES ═══════════════════════════ */
 const VIEW_IMGS={
-  District:'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1920&q=80',
-  Street:'https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1920&q=80',
+  Zone:'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1920&q=80',
 };
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
 function BuildingView({aiOpen=false}){
-  const [tab,setTab]=useState('City');
+  const [tab,setTab]=useState('Campus');
   const isBuilding=tab==='Building';
   return(
     <div style={{position:'absolute',inset:0}}>
       <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:4,zIndex:10,background:'rgba(13,24,41,.85)',border:'1px solid var(--border)',borderRadius:8,padding:4}}>
-        {['City','District','Street','Building'].map(t=>{const a=t===tab;return(
+        {['Campus','Building','Floor','Zone'].map(t=>{const a=t===tab;return(
           <button key={t} onClick={()=>setTab(t)} style={{padding:'5px 16px',borderRadius:5,fontSize:12,fontWeight:a?600:400,color:a?'#0d1829':'var(--muted)',background:a?'rgba(255,255,255,0.92)':'transparent',border:'none',cursor:'pointer'}}>{t}</button>
         );})}
       </div>
@@ -674,9 +673,9 @@ function BuildingView({aiOpen=false}){
         </>
       ):(
         <div style={{position:'absolute',inset:0}}>
-          {tab==='City'?(
+          {tab==='Campus'?(
             <video key="city-video" src="city-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
-          ):tab==='Street'?(
+          ):tab==='Floor'?(
             <video key="street-video" src="street-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           ):(
             <img src={VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
