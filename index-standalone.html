@@ -752,7 +752,7 @@ function BuildingView({aiOpen=false,onToggle3D}){
           {tab==='Campus'?(
             <video key="city-video" src="city-view.mp4" autoPlay loop muted playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           ):(
-            <img src={tab==='Building'?(bFloor===5?'building3d-l5.png':'building3d-mm.png'):VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
+            <img src={tab==='Building'?`building3d-l${bFloor}.png`:VIEW_IMGS[tab]} alt={tab} onError={e=>{e.target.onerror=null;e.target.src='building3d-mm.png';}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
           )}
           <div style={{position:'absolute',inset:0,background:'rgba(7,13,26,.15)'}}/>
           {tab==='Building'&&(<>
