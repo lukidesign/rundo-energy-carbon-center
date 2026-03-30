@@ -792,22 +792,25 @@ function IntroScreen({onDone}){
 /* ══════════════════ APP ══════════════════════════════════════════ */
 function App(){
   const [intro,setIntro]=useState(true);
-  const [showAgent,setShowAgent]=useState(false);
   const [show3D,setShow3D]=useState(false);
   return(
     <EProvider>
       {intro&&<IntroScreen onDone={()=>setIntro(false)}/>}
       {show3D&&<Globe3D onClose={()=>setShow3D(false)}/>}
       <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
-        <BuildingView aiOpen={showAgent} onToggle3D={()=>setShow3D(true)}/>
+        <BuildingView onToggle3D={()=>setShow3D(true)}/>
         <div style={{position:'absolute',left:0,top:0,width:400,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:12,overflowY:'auto',zIndex:5}}>
           <AISuggestionPanel/>
           <EnergyChart/>
           <StatsCards/>
           <SavingsChart/>
         </div>
-        {showAgent&&<AIChatPanel onClose={()=>setShowAgent(false)}/>}
-        <button onClick={()=>setShowAgent(v=>!v)} style={{position:'absolute',top:16,right:16,zIndex:50,width:36,height:36,borderRadius:'50%',background:showAgent?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,border:showAgent?'1px solid rgba(139,92,246,.6)':'1px solid rgba(255,255,255,0.15)',cursor:'pointer',color:'#fff',transition:'all .2s',boxShadow:showAgent?'0 0 16px rgba(139,92,246,.6)':'0 2px 8px rgba(0,0,0,.4)'}}>AI</button>
+        <a href="http://test.hokoemc.com:8060/login?redirect=/power/electricChart" target="_blank" rel="noopener noreferrer"
+          style={{position:'absolute',top:16,right:16,zIndex:50,width:36,height:36,borderRadius:18,background:'linear-gradient(135deg,rgba(143,231,163,0.12) 0%,rgba(23,204,200,0.12) 100%)',border:'1px solid rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)',cursor:'pointer',textDecoration:'none',transition:'box-shadow .2s'}}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow='0 0 14px rgba(23,204,200,0.5)'}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.4)'}>
+          <img src="app-icon.png" alt="Smart City Platform" style={{width:24,height:24,objectFit:'contain'}}/>
+        </a>
       </div>
     </EProvider>
   );
