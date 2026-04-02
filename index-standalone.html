@@ -946,9 +946,9 @@ function Building3D({aiOpen=false}){
 function FloorSelector({panelVisible=true}){
   const {active,setActive}=useE();
   return(
-    <div style={{position:'absolute',left:panelVisible?420:20,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',gap:8,zIndex:10,transition:'left 0.4s cubic-bezier(0.4,0,0.2,1)'}}>
-      {[...FLOORS].reverse().map(f=>(
-        <button key={f.id} onClick={()=>setActive(f.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,fontWeight:active===f.id?700:400,color:active===f.id?'var(--green)':'var(--muted)',padding:'2px 4px',transition:'color .15s'}}>{f.label}</button>
+    <div style={{position:'absolute',left:panelVisible?420:20,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',gap:8,zIndex:10,width:36,transition:'left 0.4s cubic-bezier(0.4,0,0.2,1)'}}>
+      {[7,6,5,4,3,2,1].map((f,i)=>(
+        <button key={f} onClick={()=>setActive(f)} className="floor-in" style={{animationDelay:`${i*60}ms`,background:active===f?'#18191f':'none',border:'none',cursor:'pointer',fontSize:16,fontWeight:active===f?700:400,color:active===f?'#fff':'#8b9ab5',padding:'2px 4px',borderRadius:100,textAlign:'center',transition:'background .15s, color .15s, font-weight .15s'}}>{f}F</button>
       ))}
     </div>
   );
