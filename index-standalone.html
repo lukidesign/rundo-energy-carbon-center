@@ -841,7 +841,7 @@ function Building3D({aiOpen=false}){
       });
       const geo=new THREE.BoxGeometry(FW,FH,FD);
       const mesh=new THREE.Mesh(geo,mat);
-      mesh.position.set(0,i*(FH+FG)+FH/2,0);
+      mesh.position.set(0,(f.id-1)*(FH+FG)+FH/2,0);
       mesh.userData={id:f.id,hl:f.hl};
       scene.add(mesh);meshes.push(mesh);
       // Edge lines — window grid effect
@@ -849,7 +849,7 @@ function Building3D({aiOpen=false}){
         new THREE.EdgesGeometry(geo),
         new THREE.LineBasicMaterial({color:0x2255aa,transparent:true,opacity:0.7})
       );
-      edges.position.copy(mesh.position);
+      edges.position.set(0,(f.id-1)*(FH+FG)+FH/2,0);
       scene.add(edges);
     });
 
@@ -903,7 +903,7 @@ function Building3D({aiOpen=false}){
         const {active:af}=stRef.current;
         const idx=FLOORS.findIndex(f=>f.id===af);
         if(idx>=0){
-          const pos=new THREE.Vector3(-2,idx*(FH+FG)+FH/2+.4,2);
+          const pos=new THREE.Vector3(-2,(af-1)*(FH+FG)+FH/2+.4,2);
           pos.project(camera);
           const rect=renderer.domElement.getBoundingClientRect();
           const tx=(pos.x*.5+.5)*rect.width;
@@ -1174,9 +1174,9 @@ function MapControls({onToggle3D,onTogglePanel,panelVisible,onRefresh,tab,onTogg
 /* ══════════════════ VIEW CARDS ══════════════════════════════════ */
 // 3 cards — each with its own thumbnail image, crop, and modal image
 const VIEW_CARD_DEFS=[
-  {src:'https://www.figma.com/api/mcp/asset/38888a47-344a-4424-a2c0-454038e5978d', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/ntimg.png'},
-  {src:'https://www.figma.com/api/mcp/asset/01f065b4-966b-4bb9-82da-0e735520aa03', h:'100%',    top:'0%',      overlay:true,  modal:'rd/ntimg01.png'},
-  {src:'https://www.figma.com/api/mcp/asset/15578e68-f656-44e1-b87f-7152eb333ec9', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ntimg.png'},
+  {src:'rd/view1.png', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/ntimg.png'},
+  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/ntimg01.png'},
+  {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ntimg.png'},
 ];
 function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
   const [hover,setHover]=useState(false);
