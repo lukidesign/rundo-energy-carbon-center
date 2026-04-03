@@ -9,127 +9,256 @@ td{padding:7px 12px;border-bottom:1px solid #e2e8f0}
 tr:nth-child(even) td{background:#f8fafc}
 code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#0f172a}
 pre{background:#0f172a;color:#e2e8f0;padding:16px 20px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6}
-blockquote{border-left:4px solid #94a3b8;margin:0;padding:4px 16px;color:#64748b}
-.meta{color:#64748b;font-size:13px;margin-bottom:4px}
+blockquote{border-left:4px solid #94a3b8;margin:0;padding:4px 16px;color:#64748b;background:#f8fafc;border-radius:0 4px 4px 0}
 hr{border:none;border-top:1px solid #e2e8f0;margin:28px 0}
 a{color:#2563eb;text-decoration:none}
 ul,ol{padding-left:24px}
 li{margin:4px 0}
-</style></head><body><h1>智慧城市平台 — 需求分析文档（PRD）</h1>
-<p><strong>文档版本：</strong> v1.0</p>
-<p><strong>编写日期：</strong> 2026-04-01</p>
-<p><strong>对应平台版本：</strong> v3.3.0</p>
-<p><strong>Figma 设计稿：</strong> <a href="https://www.figma.com/design/zOsnUZun5PyXPgfz926Agg/">Des_CC_FigmaBuilding3D</a></p>
+.meta{color:#64748b;font-size:13px;margin:2px 0}
+.footer{color:#94a3b8;font-size:12px;margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0}
+</style></head><body>
+
+<h1>RunDo Energy Carbon Center — 需求分析文档（PRD）</h1>
+<p class="meta"><strong>文档版本：</strong> v1.2</p>
+<p class="meta"><strong>编写日期：</strong> 2026-04-02</p>
+<p class="meta"><strong>对应平台版本：</strong> v3.5.5</p>
+<p class="meta"><strong>Figma 设计稿：</strong> <a href="https://www.figma.com/design/zOsnUZun5PyXPgfz926Agg/">Des_CC_FigmaBuilding3D</a></p>
 <hr>
+
 <h2>一、产品目标</h2>
 <h3>1.1 核心价值</h3>
-<p>智慧城市平台面向建筑能耗管理场景，通过多层级可视化视图（园区 → 建筑 → 楼层 → 区域），帮助管理人员：</p>
-<ul><ul><li><strong>实时掌握</strong>建筑各楼层能耗状态</li>
-<p></ul><ul><li><strong>直观对比</strong>当前用量与 AI 优化后预期用量</li></p>
-<p></ul><ul><li><strong>快速响应</strong>AI 建议，一键应用节能策略</li></p>
-<p></ul><ul><li><strong>追踪月度节省</strong>效果（费用 / 能源 / 碳排放）</li></ul></ul></p>
+<p>RunDo Energy Carbon Center（原 Smart City Platform）面向建筑能耗管理场景，通过多层级可视化视图（园区 → 建筑 → 楼层），帮助管理人员：</p>
+<ul>
+  <li><strong>实时掌握</strong>建筑各楼层能耗状态</li>
+  <li><strong>直观对比</strong>当前用量与 AI 优化后预期用量</li>
+  <li><strong>快速响应</strong>AI 建议，一键应用节能策略</li>
+  <li><strong>追踪月度节省</strong>效果（费用 / 能源 / 碳排放）</li>
+  <li><strong>查看设备监测</strong>数据（通过 VIEW 卡片联动 RunDo ECM 系统）</li>
+</ul>
+
 <h3>1.2 设计原则</h3>
-<table><tr><th>原则</th><th>描述</th></tr><tr><td>信息密度适中</td><td>左侧面板承载数据，右侧视图承载空间感知</td></tr><tr><td>渐进式呈现</td><td>动画逐步引导用户注意力，避免信息轰炸</td></tr><tr><td>空间与数据联动</td><td>楼层视图点击 = 数据聚焦，保持上下文一致</td></tr><tr><td>深色沉浸风格</td><td>暗色背景 + 蓝绿荧光，符合智慧城市科技感</td></tr></table>
+<table><tr><th>原则</th><th>描述</th></tr>
+<tr><td>信息密度适中</td><td>左侧面板承载数据，右侧视图承载空间感知</td></tr>
+<tr><td>渐进式呈现</td><td>动画逐步引导用户注意力，避免信息轰炸</td></tr>
+<tr><td>空间与数据联动</td><td>楼层视图点击 = 数据聚焦，保持上下文一致</td></tr>
+<tr><td>深色沉浸风格</td><td>暗色背景 + 蓝绿荧光，符合智慧城市科技感</td></tr>
+<tr><td>按需展示</td><td>VIEW 设备卡片默认隐藏，由控制按钮显示</td></tr>
+</table>
+
 <hr>
 <h2>二、用户角色</h2>
-<table><tr><th>角色</th><th>描述</th><th>核心需求</th></tr><tr><td>能源管理员</td><td>负责整栋楼能耗管理</td><td>查看整体用量、应用 AI 优化建议</td></tr><tr><td>楼层负责人</td><td>负责某层楼的运营</td><td>查看本层用量、对比优化前后数据</td></tr><tr><td>系统演示员</td><td>向客户展示平台能力</td><td>流畅动画、直观可视化、完整演示流程</td></tr></table>
+<table><tr><th>角色</th><th>描述</th><th>核心需求</th></tr>
+<tr><td>能源管理员</td><td>负责整栋楼能耗管理</td><td>查看整体用量、应用 AI 优化建议</td></tr>
+<tr><td>楼层负责人</td><td>负责某层楼的运营</td><td>查看本层用量、对比优化前后数据</td></tr>
+<tr><td>设备运维员</td><td>关注机房/设备运行状态</td><td>VIEW 卡片查看压缩机/泵/冷水系统实时监测图</td></tr>
+<tr><td>系统演示员</td><td>向客户展示平台能力</td><td>流畅动画、直观可视化、完整演示流程</td></tr>
+</table>
+
 <hr>
 <h2>三、功能模块需求</h2>
+
 <h3>3.1 启动介绍（Intro Screen）</h3>
-<p><strong>功能描述：</strong></p>
 <p>平台打开后播放全屏启动动画，展示城市全貌，建立产品高端感。</p>
-<p><strong>需求细节：</strong></p>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>全屏视频播放</td><td>循环播放 city-view.mp4</td><td>✅ 已实现</td></tr><tr><td>海报帧预加载</td><td>视频加载前显示 city-overview.png</td><td>✅ 已实现</td></tr><tr><td>自动跳过</td><td>8 秒后自动进入主界面</td><td>✅ 已实现</td></tr><tr><td>手动跳过</td><td>右下角 "Skip ›" 按钮</td><td>✅ 已实现</td></tr><tr><td>淡出过渡</td><td>跳过时 600ms 透明度过渡</td><td>✅ 已实现</td></tr></table>
-<hr>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>全屏视频播放</td><td>循环播放 city-view.mp4</td><td>✅ 已实现</td></tr>
+<tr><td>海报帧预加载</td><td>视频加载前显示 city-overview.png</td><td>✅ 已实现</td></tr>
+<tr><td>自动跳过</td><td>8 秒后自动进入主界面</td><td>✅ 已实现</td></tr>
+<tr><td>手动跳过</td><td>右下角 "Skip ›" 按钮</td><td>✅ 已实现</td></tr>
+<tr><td>淡出过渡</td><td>跳过时 600ms 透明度过渡</td><td>✅ 已实现</td></tr>
+</table>
+
 <h3>3.2 顶部视图切换 Tab</h3>
-<p><strong>功能描述：</strong></p>
-<p>位于右侧视图区顶部，切换不同层级的空间视图。</p>
-<p><strong>四个 Tab 定义：</strong></p>
-<table><tr><th>Tab</th><th>视图内容</th><th>数据面板</th></tr><tr><td>Campus</td><td>城市全景视频（city-view.mp4）</td><td>同一左侧面板</td></tr><tr><td>Building</td><td>3D 建筑外观图（可选楼层）</td><td>同一左侧面板</td></tr><tr><td>Floor</td><td>Three.js 交互式 3D 建筑模型</td><td>同一左侧面板</td></tr><tr><td>Zone</td><td>3D 建筑图（可选楼层，按区域着色）</td><td>同一左侧面板</td></tr></table>
+<p>位于右侧视图区顶部，切换不同层级的空间视图。当前启用 3 个 Tab：</p>
+<table><tr><th>Tab</th><th>视图内容</th><th>数据面板</th></tr>
+<tr><td>Campus</td><td>城市全景视频（city-view.mp4）+ 热区点击跳转 Building</td><td>同一左侧面板</td></tr>
+<tr><td>Building</td><td>3D 建筑外观图（可选楼层，默认 5F）</td><td>同一左侧面板</td></tr>
+<tr><td>Floor</td><td>Three.js 交互式 3D 建筑模型</td><td>同一左侧面板</td></tr>
+</table>
+<blockquote><strong>Zone Tab 已隐藏</strong>（<code>{false&amp;&amp;tab==='Zone'&amp;&amp;...}</code>），内容保留在代码中，后续可复用。</blockquote>
 <p><strong>交互规范：</strong></p>
-<ul><ul><li>选中态：白色文字 + 深色背景圆角胶囊</li>
-<p></ul><ul><li>未选中态：半透明白色文字</li></p>
-<p></ul><ul><li>切换即时响应，无加载等待（图片预加载机制）</li></p>
-<p></ul><ul><li>毛玻璃背景（backdrop-filter: blur）</li></ul></ul></p>
-<hr>
+<ul>
+  <li>默认激活：<strong>Campus</strong></li>
+  <li>选中态：白色文字 + 深色背景圆角胶囊；未选中态：半透明白色文字</li>
+  <li>毛玻璃背景（backdrop-filter: blur）</li>
+</ul>
+<p><strong>Campus Tab 热区：</strong> 范围 <code>left 23%–82%，top 16%–81%</code>，点击切换至 Building Tab，提示文字 <code>"Enter Building View"</code></p>
+
 <h3>3.3 Building Tab — 3D 建筑楼层视图</h3>
-<p><strong>功能描述：</strong></p>
-<p>展示建筑外观 3D 图，配合楼层选择器高亮对应楼层，并显示能耗数据。</p>
 <h4>3.3.1 楼层选择器</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>楼层按钮列表</td><td>7F → 1F 竖排展示</td><td>✅ 已实现</td></tr><tr><td>选中高亮</td><td>深色背景 + 白色加粗文字</td><td>✅ 已实现</td></tr><tr><td>未选中态</td><td>灰蓝色文字，无背景</td><td>✅ 已实现</td></tr><tr><td>位置跟随面板</td><td>面板收起时按钮左移</td><td>✅ 已实现</td></tr><tr><td>淡入动效</td><td>页面加载时逐按钮 fadeSlide（60ms 错开）</td><td>✅ 已实现</td></tr><tr><td>默认状态</td><td>无楼层选中，显示建筑整体图</td><td>✅ 已实现</td></tr></table>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>楼层按钮列表</td><td>7F → 1F 竖排展示</td><td>✅ 已实现</td></tr>
+<tr><td>默认选中楼层</td><td>5F</td><td>✅ 已实现</td></tr>
+<tr><td>选中高亮</td><td>深色背景 + 白色加粗文字</td><td>✅ 已实现</td></tr>
+<tr><td>位置跟随面板</td><td>面板收起时按钮左移</td><td>✅ 已实现</td></tr>
+<tr><td>淡入动效</td><td>逐按钮 fadeSlide（60ms 错开）</td><td>✅ 已实现</td></tr>
+</table>
+
 <h4>3.3.2 楼层图片切换</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>默认图</td><td>zbuilding3d-mr.png（建筑全貌）</td><td>✅ 已实现</td></tr><tr><td>楼层图</td><td>zbuilding3d-l1.png … zbuilding3d-l7.png</td><td>✅ 已实现</td></tr><tr><td>预加载检测</td><td>Image() onload/onerror，失败回退默认图</td><td>✅ 已实现</td></tr></table>
-<h4>3.3.3 楼层 Hover 交互</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>悬停感应区域</td><td>对应楼层图片中绿色高亮带位置</td><td>✅ 已实现</td></tr><tr><td>Tooltip 内容</td><td>楼层名、当前消耗（kWh）、优化后消耗、节省百分比</td><td>✅ 已实现</td></tr><tr><td>Tooltip 样式</td><td>深色卡片，蓝色数字，绿色 badge</td><td>✅ 已实现</td></tr><tr><td>虚线连接器</td><td>SVG 对角虚线从 tooltip 连接至楼层区域</td><td>✅ 已实现</td></tr><tr><td>感应区位置公式</td><td><code>top = 68 - (floor-1)*8 %</code></td><td>✅ 已实现</td></tr></table>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>默认图</td><td><code>newbuilding3dimg/newbuilding3d-mm.png</code></td><td>✅ 已实现</td></tr>
+<tr><td>楼层图</td><td><code>newbuilding3dimg/newbuilding3d-l1.png … l7.png</code></td><td>✅ 已实现</td></tr>
+<tr><td>预加载检测</td><td>Image() onload/onerror，失败回退默认图</td><td>✅ 已实现</td></tr>
+</table>
+
+<h4>3.3.3 Tooltip 卡片（常驻显示）</h4>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>显示方式</td><td><strong>常驻显示</strong>，不需要 hover 触发</td><td>✅ 已实现</td></tr>
+<tr><td>位置</td><td><code>left: 38.5%，top: 34%</code>（绝对定位于建筑图容器）</td><td>✅ 已实现</td></tr>
+<tr><td>内容</td><td>楼层名、当前消耗（kWh）、优化后消耗、节省百分比</td><td>✅ 已实现</td></tr>
+<tr><td>对角连接线</td><td>已移除</td><td>✅ 已实现</td></tr>
+</table>
+
 <h4>3.3.4 建筑标签</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>浮动标签</td><td>"Main Hospital Building" 胶囊形标签</td><td>✅ 已实现</td></tr><tr><td>竖线连接</td><td>标签底部连接至建筑顶部圆点</td><td>✅ 已实现</td></tr><tr><td>点击跳转</td><td>链接至 hokoemc 仪表盘（新标签页）</td><td>✅ 已实现</td></tr></table>
-<hr>
+<blockquote>Main Hospital Building 标签已从 Building Tab 移除，仅保留于 Zone Tab（当前隐藏）。</blockquote>
+
 <h3>3.4 Floor Tab — Three.js 3D 建筑模型</h3>
-<p><strong>功能描述：</strong></p>
-<p>展示可交互的 Three.js 3D 建筑模型，支持拖拽旋转和缩放。</p>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>3D 模型渲染</td><td>WebGL 渲染，多楼层着色</td><td>✅ 已实现</td></tr><tr><td>拖拽旋转</td><td>鼠标拖拽旋转视角</td><td>✅ 已实现</td></tr><tr><td>滚轮缩放</td><td>鼠标滚轮控制远近</td><td>✅ 已实现</td></tr><tr><td>触控缩放</td><td>两指 pinch-zoom</td><td>✅ 已实现</td></tr><tr><td>楼层点击高亮</td><td>点击楼层触发高亮 + 数据联动</td><td>⏳ 待开发</td></tr><tr><td>AI 面板联动</td><td>AI 打开时模型自动偏移居中</td><td>✅ 已实现</td></tr></table>
-<hr>
-<h3>3.5 Zone Tab — 区域视图</h3>
-<p><strong>功能描述：</strong></p>
-<p>与 Building Tab 结构相同，使用独立图片集（build3dimg/），展示建筑区域能耗分布。</p>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>楼层选择器（独立状态）</td><td>与 Building Tab 互相独立</td><td>✅ 已实现</td></tr><tr><td>区域图片集</td><td>build3dimg-mr.png + l1–l7.png</td><td>✅ 已实现</td></tr><tr><td>Hover Tooltip</td><td>同 Building Tab 逻辑</td><td>✅ 已实现</td></tr><tr><td>区域划分（ABCEFG）</td><td>ZONES 常量保留，暂未启用</td><td>⏳ 待开发</td></tr></table>
-<hr>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>3D 模型渲染</td><td>WebGL 渲染，多楼层着色</td><td>✅ 已实现</td></tr>
+<tr><td>拖拽旋转</td><td>鼠标拖拽旋转视角</td><td>✅ 已实现</td></tr>
+<tr><td>滚轮缩放</td><td>鼠标滚轮控制远近</td><td>✅ 已实现</td></tr>
+<tr><td>触控缩放</td><td>两指 pinch-zoom</td><td>✅ 已实现</td></tr>
+<tr><td>楼层高亮联动</td><td>选中楼层与 3D 模型高亮对应（使用 f.id-1 计算 Y 坐标）</td><td>✅ 已实现</td></tr>
+<tr><td>AI 面板联动</td><td>AI 打开时模型自动偏移居中</td><td>✅ 已实现</td></tr>
+</table>
+<p><strong>3D 楼层位置计算公式：</strong></p>
+<pre>mesh.position.y = (f.id - 1) * (FH + FG) + FH / 2</pre>
+<blockquote>注：<code>f.id</code> 为楼层号（1–7），不使用 FLOORS 数组索引，避免倒序导致高亮错位。</blockquote>
+
+<h3>3.5 Zone Tab — 区域视图（当前隐藏）</h3>
+<blockquote>Zone Tab 已从 Tab 列表移除并隐藏。代码中保留内容（含 Main Hospital Building 标签、区域图片集），方便后续恢复。</blockquote>
+
 <h3>3.6 左侧数据面板</h3>
-<p>左侧面板宽 420px，固定在视图左侧，可通过地图图标按钮隐藏/展示（translateX 动画）。</p>
+<p>左侧面板宽 420px，可通过地图图标按钮隐藏/展示（translateX 动画）。</p>
+
 <h4>3.6.1 AI Suggestion 面板</h4>
-<p><strong>功能描述：</strong></p>
-<p>展示当前最优先的 AI 节能建议，支持用户应用或忽略。</p>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>建议标题</td><td>粗体，如"Optimize ventilation at 14F in the office sector"</td><td>✅ 已实现</td></tr><tr><td>建议描述</td><td>打字机效果（1s 延迟后开始，14ms/字符）</td><td>✅ 已实现</td></tr><tr><td>节省幅度 Badge</td><td>"+25% ↓" 绿色徽章</td><td>✅ 已实现</td></tr><tr><td>Dismiss 按钮</td><td>关闭当前建议卡片</td><td>✅ 已实现</td></tr><tr><td>Apply 按钮</td><td>应用建议（视觉反馈，待接口）</td><td>✅ 已实现</td></tr><tr><td>Show more</td><td>展开详细分析弹窗</td><td>✅ 已实现</td></tr></table>
-<p><strong>AI Detail 弹窗（Show more）：</strong></p>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>全屏遮罩弹窗</td><td>createPortal 渲染至 body（避免 transform 层叠）</td><td>✅ 已实现</td></tr><tr><td>分析内容</td><td>楼层、用途、优化策略、节省测算</td><td>✅ 已实现</td></tr><tr><td>关闭按钮</td><td>× 按钮关闭弹窗</td><td>✅ 已实现</td></tr></table>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>建议标题与描述</td><td>打字机效果（1s 延迟，14ms/字符）</td><td>✅ 已实现</td></tr>
+<tr><td>节省幅度 Badge</td><td>"+25% ↓" 绿色徽章</td><td>✅ 已实现</td></tr>
+<tr><td>Dismiss / Apply 按钮</td><td>关闭 / 应用建议</td><td>✅ 已实现</td></tr>
+<tr><td>Show more 弹窗</td><td>ReactDOM.createPortal 全屏遮罩弹窗</td><td>✅ 已实现</td></tr>
+<tr><td>AI 图标</td><td>六芒星 SVG，±180° 左右摇摆动效（3.6s 周期）</td><td>✅ 已实现</td></tr>
+</table>
+
 <h4>3.6.2 Energy Consumption 柱状图</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>双色柱</td><td>灰色（当前）+ 蓝色（优化后）</td><td>✅ 已实现</td></tr><tr><td>X 轴时间</td><td>06:00 / 12:00 / 18:00 / Now</td><td>✅ 已实现</td></tr><tr><td>数值标签</td><td>chartjs-plugin-datalabels，显示在柱顶</td><td>✅ 已实现</td></tr><tr><td>图例</td><td>Currently / After applying AI suggestions</td><td>✅ 已实现</td></tr><tr><td>波浪增长动画</td><td>2.1s 起，每列延迟 500ms</td><td>✅ 已实现</td></tr><tr><td>实时更新</td><td>每 3s 随机浮动 ±5%（模拟真实数据）</td><td>✅ 已实现</td></tr></table>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>双色柱</td><td>灰色（当前）+ 蓝色（优化后）</td><td>✅ 已实现</td></tr>
+<tr><td>X 轴时间</td><td>06:00 / 12:00 / 18:00 / Now</td><td>✅ 已实现</td></tr>
+<tr><td>波浪增长动画</td><td>2.1s 起，每列延迟 500ms</td><td>✅ 已实现</td></tr>
+<tr><td>实时更新</td><td>每 3s 随机浮动 ±5%</td><td>✅ 已实现</td></tr>
+</table>
+
 <h4>3.6.3 Stats Cards（统计卡片）</h4>
-<p>四张卡片，2×2 网格布局：</p>
-<table><tr><th>卡片</th><th>指标</th><th>示例数值</th></tr><tr><td>Daily consumption</td><td>日用量</td><td>332 kWh</td></tr><tr><td>Weekly consumption</td><td>周用量</td><td>1,437 kWh</td></tr><tr><td>Monthly consumption</td><td>月用量</td><td>10,400 kWh</td></tr><tr><td>Yearly consumption</td><td>年用量</td><td>154,300 kWh</td></tr></table>
-<p>每张卡片均含：</p>
-<ul><ul><li>当前数值（count-up 动画递增）</li>
-<p></ul><ul><li>优化后数值（蓝色）</li></p>
-<p></ul><ul><li>节省幅度 "+25% ↓"（绿色）</li></ul></ul></p>
-<p><strong>动画规格：</strong> 2.0s 开始，easeInOut 曲线，3150ms 内完成（结束于 5.15s）</p>
+<p>四张卡片，2×2 网格布局，每张含 count-up 动画数值、优化后数值（蓝色）、节省幅度（绿色）：</p>
+<table><tr><th>卡片</th><th>指标</th><th>示例数值</th></tr>
+<tr><td>Daily consumption</td><td>日用量</td><td>332 kWh</td></tr>
+<tr><td>Weekly consumption</td><td>周用量</td><td>1,437 kWh</td></tr>
+<tr><td>Monthly consumption</td><td>月用量</td><td>10,400 kWh</td></tr>
+<tr><td>Yearly consumption</td><td>年用量</td><td>154,300 kWh</td></tr>
+</table>
+
 <h4>3.6.4 Monthly Savings 折线图</h4>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>双折线</td><td>Cost savings（绿色粗线）/ Energy savings（蓝色细线）</td><td>✅ 已实现</td></tr><tr><td>X 轴</td><td>1 Dec → 30 Dec（每 5 天一刻度）</td><td>✅ 已实现</td></tr><tr><td>顶部数据摘要</td><td>4.3k 节省成本 / 2.4k kWh / 135 CO₂</td><td>✅ 已实现</td></tr><tr><td>从左向右绘制</td><td>lineDrawPlugin 裁剪动画</td><td>✅ 已实现</td></tr><tr><td>动画时序</td><td>2.05s 起，2950ms 内完成（结束于 5s）</td><td>✅ 已实现</td></tr><tr><td>Hover 竖线</td><td>crosshairPlugin 竖向参考线</td><td>✅ 已实现</td></tr></table>
-<hr>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>双折线</td><td>Cost savings（绿色粗线）/ Energy savings（蓝色细线）</td><td>✅ 已实现</td></tr>
+<tr><td>X 轴</td><td>1 Dec → 30 Dec（每 5 天一刻度）</td><td>✅ 已实现</td></tr>
+<tr><td>从左向右绘制</td><td>lineDrawPlugin 裁剪动画</td><td>✅ 已实现</td></tr>
+<tr><td>Hover 竖线</td><td>crosshairPlugin 竖向参考线</td><td>✅ 已实现</td></tr>
+</table>
+
 <h3>3.7 地图控件（Map Controls）</h3>
-<p>右下角固定位置，提供视图操作按钮组。</p>
-<table><tr><th>按钮</th><th>功能</th><th>当前状态</th></tr><tr><td>↻ 刷新</td><td>重置当前 Tab 3D 楼层选择 + 左侧面板动画重播</td><td>✅ 已实现</td></tr><tr><td>+ 放大</td><td>放大地图/3D 视图</td><td>⏳ UI 已有，逻辑待绑定</td></tr><tr><td>− 缩小</td><td>缩小地图/3D 视图</td><td>⏳ UI 已有，逻辑待绑定</td></tr><tr><td>全屏</td><td>切换全屏模式</td><td>✅ 已实现</td></tr><tr><td>3D</td><td>打开 Globe3D 地球仪弹窗</td><td>✅ 已实现</td></tr><tr><td>地图图标</td><td>切换左侧数据面板显示/隐藏</td><td>✅ 已实现</td></tr></table>
-<hr>
-<h3>3.8 Globe3D 地球仪</h3>
-<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr><tr><td>真实地球纹理</td><td>Canvas 生成（含大陆轮廓、海洋渐变）</td><td>✅ 已实现</td></tr><tr><td>星空背景</td><td>12,000 颗随机星点</td><td>✅ 已实现</td></tr><tr><td>大气光晕</td><td>半透明蓝色球体</td><td>✅ 已实现</td></tr><tr><td>云层</td><td>Canvas 噪声生成，独立旋转</td><td>✅ 已实现</td></tr><tr><td>拖拽旋转</td><td>鼠标/触控拖拽</td><td>✅ 已实现</td></tr><tr><td>滚轮缩放</td><td>鼠标滚轮 / 双指缩放</td><td>✅ 已实现</td></tr><tr><td>关闭按钮</td><td>× 按钮关闭弹窗</td><td>✅ 已实现</td></tr></table>
+<p>右下角固定位置，所有 Tab 均可操作。</p>
+<table><tr><th>按钮</th><th>图标</th><th>功能</th><th>当前状态</th></tr>
+<tr><td>VIEW 切换</td><td>⊙ 圆形图标</td><td>控制 VIEW 设备卡片显示/隐藏（默认隐藏）</td><td>✅ 已实现</td></tr>
+<tr><td>↻ 刷新</td><td>旋转箭头</td><td>重置当前 Tab 3D 楼层选择 + 左侧面板动画重播</td><td>✅ 已实现</td></tr>
+<tr><td>+ 放大 / − 缩小</td><td>—</td><td>放大/缩小地图/3D 视图</td><td>⏳ UI 已有，逻辑待绑定</td></tr>
+<tr><td>全屏</td><td>SVG 展开箭头图标</td><td>切换全屏模式（Expand）</td><td>✅ 已实现</td></tr>
+<tr><td>3D 地球仪</td><td>地球图标</td><td>打开 Globe3D 弹窗</td><td>✅ 已实现</td></tr>
+<tr><td>面板切换</td><td>Layers/Stack SVG</td><td>切换左侧数据面板显示/隐藏</td><td>✅ 已实现</td></tr>
+</table>
+
+<h3>3.8 VIEW 设备监测卡片</h3>
+<p>叠加在右侧视图区的三张设备监测图片卡片，点击可全屏弹窗查看详情。<br>
+<strong>触发方式：</strong> 点击 Map Controls 中的 ⊙ 图标，默认隐藏。</p>
+<table><tr><th>卡片编号</th><th>缩略图</th><th>设备类型</th><th>弹窗图片</th></tr>
+<tr><td>VIEW 1</td><td>rd/view1.png</td><td>CMP-1 压缩机监测</td><td>rd/ntimg.png</td></tr>
+<tr><td>VIEW 2</td><td>rd/view2.png</td><td>CH-1 水泵监测（含 overlay 遮层）</td><td>rd/ntimg01.png</td></tr>
+<tr><td>VIEW 3</td><td>rd/view3.png</td><td>冷水系统总览</td><td>rd/ntimg.png</td></tr>
+</table>
+<p><strong>卡片布局参数（<code>VIEW_CARD_DEFS</code>）：</strong></p>
+<table><tr><th>卡片</th><th>h（图片高度）</th><th>top（偏移）</th><th>overlay</th></tr>
+<tr><td>1</td><td>136.91%</td><td>-18.75%</td><td>false</td></tr>
+<tr><td>2</td><td>100%</td><td>0%</td><td>true</td></tr>
+<tr><td>3</td><td>144.63%</td><td>-11.97%</td><td>false</td></tr>
+</table>
+<p><strong>交互：</strong> 点击卡片 → 全屏弹窗（ReactDOM.createPortal）；卡片有 bearingPulse 呼吸光晕动效。</p>
+
+<h3>3.9 Globe3D 地球仪</h3>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>真实地球纹理</td><td>Canvas 生成（含大陆轮廓、海洋渐变）</td><td>✅ 已实现</td></tr>
+<tr><td>星空背景</td><td>12,000 颗随机星点</td><td>✅ 已实现</td></tr>
+<tr><td>大气光晕</td><td>半透明蓝色球体</td><td>✅ 已实现</td></tr>
+<tr><td>云层</td><td>Canvas 噪声生成，独立旋转</td><td>✅ 已实现</td></tr>
+<tr><td>拖拽旋转 / 滚轮缩放</td><td>鼠标/触控支持</td><td>✅ 已实现</td></tr>
+</table>
+
+<h3>3.10 RunDo ECM 系统集成</h3>
+<table><tr><th>需求项</th><th>描述</th><th>当前状态</th></tr>
+<tr><td>右上角应用图标</td><td>点击跳转至 rd/RunDo-ECM-v0.6-2026-03-31.html</td><td>✅ 已实现</td></tr>
+<tr><td>ECM 页面 Logo</td><td>RunDo ECM 顶栏左上角显示立方体 app-icon.png</td><td>✅ 已实现</td></tr>
+</table>
+
 <hr>
 <h2>四、交互规范</h2>
 <h3>4.1 动画时序总览</h3>
-<pre><code>0s    ──── 页面加载
-<p>0.1s  ──── pa1（AI Suggestion 卡片）fadeUp 出现</p>
-<p>1.0s  ──── 打字机开始输入</p>
-<p>2.0s  ──── pa3（Stats Cards）fadeUp 出现</p>
-<p>2.0s  ──── Stats Cards 数值开始递增</p>
-<p>2.05s ──── pa4（Monthly Savings）fadeUp 出现</p>
-<p>2.05s ──── 折线从左开始绘制</p>
-<p>2.1s  ──── pa2（Energy Chart）fadeUp 出现</p>
-<p>2.1s  ──── 柱图开始波浪增长</p>
-<p>5.0s  ──── 折线绘制完成</p>
-<p>5.15s ──── Stats Cards 数值递增完成</p>
-<p></code></pre></p>
+<pre>0s    ──── 页面加载
+0.1s  ──── pa1（AI Suggestion 卡片）fadeUp 出现
+1.0s  ──── 打字机开始输入
+2.0s  ──── pa3（Stats Cards）fadeUp + 数值开始递增
+2.05s ──── pa4（Monthly Savings）fadeUp + 折线从左开始绘制
+2.1s  ──── pa2（Energy Chart）fadeUp + 柱图开始波浪增长
+5.0s  ──── 折线绘制完成
+5.15s ──── Stats Cards 数值递增完成</pre>
+
 <h3>4.2 颜色规范</h3>
-<table><tr><th>用途</th><th>颜色值</th></tr><tr><td>背景色</td><td><code>#07090f</code></td></tr><tr><td>卡片背景</td><td><code>rgba(24,25,31,0.90)</code></td></tr><tr><td>主文字</td><td><code>#ffffff</code></td></tr><tr><td>次要文字</td><td><code>rgba(255,255,255,0.45)</code></td></tr><tr><td>蓝色强调</td><td><code>#8098f6</code></td></tr><tr><td>绿色（节能）</td><td><code>#00e5a0</code></td></tr><tr><td>Tab 选中背景</td><td><code>#16171a</code></td></tr><tr><td>楼层选中按钮</td><td><code>#18191f</code></td></tr></table>
-<h3>4.3 响应状态规范</h3>
-<table><tr><th>元素</th><th>Hover</th><th>Active</th><th>Selected</th></tr><tr><td>Tab 按钮</td><td>文字变亮</td><td>—</td><td>白底 + 白字 700</td></tr><tr><td>楼层按钮</td><td>—</td><td>—</td><td>深色底 + 白字 700</td></tr><tr><td>地图控件按钮</td><td>背景略亮</td><td>—</td><td>—</td></tr><tr><td>Building 标签</td><td>阴影增强</td><td>—</td><td>—</td></tr></table>
+<table><tr><th>用途</th><th>颜色值</th></tr>
+<tr><td>背景色</td><td><code>#07090f</code></td></tr>
+<tr><td>卡片背景</td><td><code>rgba(24,25,31,0.90)</code></td></tr>
+<tr><td>主文字</td><td><code>#ffffff</code></td></tr>
+<tr><td>次要文字</td><td><code>rgba(255,255,255,0.45)</code></td></tr>
+<tr><td>蓝色强调</td><td><code>#8098f6</code></td></tr>
+<tr><td>绿色（节能）</td><td><code>#00e5a0</code></td></tr>
+<tr><td>Tab 选中背景</td><td><code>#16171a</code></td></tr>
+<tr><td>楼层选中按钮</td><td><code>#18191f</code></td></tr>
+</table>
+
 <hr>
-<h2>五、待开发需求（下一版本规划）</h2>
+<h2>五、待开发需求</h2>
 <h3>P0 — 高优先级</h3>
-<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr><tr><td>实时数据接口</td><td>接入真实能耗数据 API，替换模拟数据</td><td>大</td></tr><tr><td>Floor Tab 楼层点击</td><td>Three.js 模型楼层点击高亮 + 数据联动</td><td>中</td></tr></table>
+<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr>
+<tr><td>实时数据接口</td><td>接入真实能耗数据 API，替换模拟数据</td><td>大</td></tr>
+</table>
+
 <h3>P1 — 中优先级</h3>
-<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr><tr><td>缩放按钮逻辑</td><td>+/- 按钮绑定 Building/Zone 图片缩放或 3D 视图缩放</td><td>小</td></tr><tr><td>Campus Tab 数据叠加</td><td>城市视频上叠加区域能耗热力图</td><td>大</td></tr><tr><td>Zone Tab 区域 ABCEFG</td><td>启用区域选择器，按区域着色显示</td><td>中</td></tr></table>
+<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr>
+<tr><td>缩放按钮逻辑</td><td>+/- 按钮绑定 Building/3D 视图缩放</td><td>小</td></tr>
+<tr><td>Campus Tab 数据叠加</td><td>城市视频上叠加区域能耗热力图</td><td>大</td></tr>
+<tr><td>Zone Tab 恢复</td><td>重新启用区域选择器和区域着色</td><td>中</td></tr>
+</table>
+
 <h3>P2 — 低优先级</h3>
-<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr><tr><td>响应式适配</td><td>支持 1440px / 1280px / iPad 分辨率</td><td>中</td></tr><tr><td>多语言支持</td><td>中英文切换</td><td>小</td></tr><tr><td>单文件工程化拆分</td><td>Vite + TypeScript 工程结构</td><td>大</td></tr><tr><td>历史数据对比</td><td>月/季/年能耗趋势对比</td><td>中</td></tr></table>
+<table><tr><th>需求</th><th>描述</th><th>预期工作量</th></tr>
+<tr><td>响应式适配</td><td>支持 1440px / 1280px / iPad 分辨率</td><td>中</td></tr>
+<tr><td>多语言支持</td><td>中英文切换</td><td>小</td></tr>
+<tr><td>单文件工程化拆分</td><td>Vite + TypeScript 工程结构</td><td>大</td></tr>
+<tr><td>历史数据对比</td><td>月/季/年能耗趋势对比</td><td>中</td></tr>
+</table>
+
 <hr>
 <h2>六、设计资源</h2>
-<table><tr><th>资源</th><th>链接</th></tr><tr><td>Figma 主设计稿</td><td>https://www.figma.com/design/zOsnUZun5PyXPgfz926Agg/</td></tr><tr><td>最新同步帧（v3.3.0）</td><td>node-id: 113-2</td></tr><tr><td>hokoemc 仪表盘</td><td>http://test.hokoemc.com:8060/login?redirect=/power/electricChart</td></tr><tr><td>演示地址</td><td>http://demo.ai-hvac001.cn/index.html</td></tr></table>
-<hr>
-<p><em>文档由 Claude Code 自动生成 · 2026-04-01</em></p></body></html>
+<table><tr><th>资源</th><th>链接</th></tr>
+<tr><td>Figma 主设计稿</td><td><a href="https://www.figma.com/design/zOsnUZun5PyXPgfz926Agg/">Des_CC_FigmaBuilding3D</a></td></tr>
+<tr><td>最新同步帧（v3.4.0）</td><td>node-id: 136-2</td></tr>
+<tr><td>线上访问地址</td><td><a href="https://lukidesign.github.io/rundo-energy-carbon-center/index-standalone.html">lukidesign.github.io/rundo-energy-carbon-center</a></td></tr>
+</table>
+
+<p class="footer">文档由 Claude Code 自动生成 · 2026-04-02</p>
+</body></html>
