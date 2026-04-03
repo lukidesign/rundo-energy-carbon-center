@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Model Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #16181e; width: 100vw; height: 100vh; overflow: hidden;
+    font-family: -apple-system, 'SF Pro Display', sans-serif; }
+  #app { width: 100%; height: 100%; position: relative; }
+  canvas { display: block; }
+  #loading {
+    position: absolute; inset: 0; background: #16181e;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; z-index: 10; transition: opacity 0.7s;
+  }
+  #loading.hide { opacity: 0; pointer-events: none; }
+  .spin { width: 30px; height: 30px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.05);
+    border-top-color: rgba(160,190,255,0.6);
+    animation: sp 0.9s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .ltxt { color: rgba(255,255,255,0.22); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
+  #hint { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.13); font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    white-space: nowrap; pointer-events: none; transition: opacity 1.2s; }
+  #hint.hide { opacity: 0; }
+  #tag { position: absolute; top: 22px; left: 26px;
+    color: rgba(255,255,255,0.1); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    pointer-events: none; }
+  #ctrl-btns {
+    position: absolute; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 20;
+  }
+  .ctrl-btn {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.55);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    outline: none;
+  }
+  .ctrl-btn:hover {
+    background: rgba(255,255,255,0.13);
+    color: rgba(255,255,255,0.90);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .ctrl-btn:active { background: rgba(255,255,255,0.20); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="loading"><div class="spin"></div><span class="ltxt">Building Scene</span></div>
+  <div id="hint">Drag · Rotate &nbsp;|&nbsp; Scroll · Zoom</div>
+  <div id="tag">Campus · Gray Model</div>
+
+  <!-- Control Buttons: Zoom In / Zoom Out / Back -->
+  <div id="ctrl-btns">
+    <!-- Zoom In -->
+    <button class="ctrl-btn" title="Zoom In" onclick="(function(){
+      var cam=window.__cam, ctrl=window.__ctrl;
+      if(!cam||!ctrl) return;
+      var offset=cam.position.clone().sub(ctrl.target);
+      offset.multiplyScalar(0.80);
+      cam.position.copy(ctrl.target.clone().add(offset));
+      ctrl.update();
+    })()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+    <!-- Zoom Out -->
+    <button class="ctrl-btn" title="Zoom Out" onclick="(function(){
+      var cam=window.__cam, ctrl=window.__ctrl;
+      if(!cam||!ctrl) return;
+      var offset=cam.position.clone().sub(ctrl.target);
+      offset.multiplyScalar(1.25);
+      cam.position.copy(ctrl.target.clone().add(offset));
+      ctrl.update();
+    })()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+    <!-- Back -->
+    <button class="ctrl-btn" title="Back" onclick="if(window.history.length>1){window.history.back();}else{window.close();}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }         from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls }      from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+// ── Renderer ──────────────────────────────────────────────────────────────────
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2.5));
+renderer.setSize(app.clientWidth, app.clientHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+// ── Scene / Fog ───────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x16181e);
+scene.fog = new THREE.Fog(0x16181e, 500, 900);
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(38, app.clientWidth / app.clientHeight, 0.5, 1000);
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping   = true;
+controls.dampingFactor   = 0.055;
+controls.enablePan       = false;
+controls.minPolarAngle   = 0.12;
+controls.maxPolarAngle   = Math.PI * 0.46;
+controls.rotateSpeed     = 0.65;
+controls.zoomSpeed       = 0.85;
+
+// ── Palette (low-saturation gray model) ──────────────────────────────────────
+const C = {
+  mainBldg  : 0xd5d4d9,
+  bldgA     : 0xbcbbbf,
+  bldgB     : 0xaaaaaf,
+  bldgC     : 0xc8c7cc,
+  bldgFar   : 0x939298,
+  bldgDeep  : 0x7a7980,
+  ground    : 0x7c7b82,
+  plaza     : 0x9b9aa0,
+  road      : 0x56555c,
+  sidewalk  : 0x6f6e75,
+  tree      : 0x5e6c50,
+  treeDark  : 0x4d5942,
+  trunk     : 0x4a3f32,
+  ring      : 0x4488ff,
+  // Railway
+  railDeck  : 0x8a8990,
+  railSteel : 0x9ba0a8,
+  railPillar: 0x6e6d75,
+  // Sports
+  courtFloor: 0x6b7a8a,
+  domeColor : 0xa0a8b0,
+  courtLine : 0x8890a0,
+  // Residential
+  resiBldg  : 0x86858c,
+  resiRoof  : 0x72717a,
+};
+
+function mat(c, r = 0.76, m = 0.05) {
+  return new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+}
+
+// ── Lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+const sun = new THREE.DirectionalLight(0xfff8f0, 2.2);
+sun.position.set(55, 100, 80);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.camera.near  = 1;
+sun.shadow.camera.far   = 800;
+sun.shadow.camera.left  = sun.shadow.camera.bottom = -400;
+sun.shadow.camera.right = sun.shadow.camera.top    =  400;
+sun.shadow.bias         = -0.0005;
+sun.shadow.normalBias   = 0.03;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xd0e4ff, 0.60);
+fill.position.set(-45, 35, -25);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0x8aaeff, 0.28);
+rim.position.set(0, 20, -80);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xeeeeff, 0x0d1022, 0.22));
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+function rbox(w, h, d, color, roughness = 0.76, metalness = 0.05) {
+  const r    = Math.min(w, h, d) * 0.045;
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, r), mat(color, roughness, metalness));
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+function disk(radius, color, r = 0.88, m = 0.03) {
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(radius, 72), mat(color, r, m));
+  mesh.rotation.x = -Math.PI / 2; mesh.receiveShadow = true;
+  return mesh;
+}
+function flatbox(w, h, d, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, 0.92, 0.02));
+  m.receiveShadow = true; return m;
+}
+
+// Building: rounded body + flat roof overhang
+function building(w, h, d, bodyColor, roofColor) {
+  const g    = new THREE.Group();
+  const body = rbox(w, h, d, bodyColor);
+  body.position.y = h / 2;
+  g.add(body);
+  const roofH = Math.max(0.28, h * 0.04);
+  const roof  = new THREE.Mesh(
+    new THREE.BoxGeometry(w + 0.22, roofH, d + 0.22),
+    mat(roofColor, 0.62, 0.08)
+  );
+  roof.position.y = h + roofH / 2;
+  roof.castShadow = true;
+  g.add(roof);
+  return g;
+}
+
+// Slim high-rise block (no chamfer needed at this scale)
+function highrise(w, h, d, color) {
+  const g    = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, 0.72, 0.08));
+  body.position.y = h / 2; body.castShadow = true; body.receiveShadow = true;
+  g.add(body);
+  return g;
+}
+
+// Tree: architectural model style (5-sided double-cone)
+function makeTree(s) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18 * s, 0.22 * s, 1.8 * s, 5),
+    mat(C.trunk, 0.92, 0.02)
+  );
+  trunk.position.y = 0.9 * s; trunk.castShadow = true; g.add(trunk);
+  const crown = new THREE.Mesh(
+    new THREE.ConeGeometry(1.55 * s, 3.6 * s, 5),
+    mat(C.tree, 0.84, 0.03)
+  );
+  crown.position.y = (1.8 + 3.6 / 2) * s; crown.castShadow = true; g.add(crown);
+  const crown2 = new THREE.Mesh(
+    new THREE.ConeGeometry(1.1 * s, 2.4 * s, 5),
+    mat(C.treeDark, 0.86, 0.02)
+  );
+  crown2.rotation.y = Math.PI / 5;
+  crown2.position.y = (1.8 + 2.5) * s; crown2.castShadow = true; g.add(crown2);
+  return g;
+}
+
+// Road strip
+function road(w, d, color = C.road) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.10, d), mat(color, 0.93, 0.02));
+  m.receiveShadow = true; return m;
+}
+
+// ── Load main model ───────────────────────────────────────────────────────────
+const loader = new GLTFLoader();
+loader.load('base_basic_pbr.glb', gltf => {
+
+  const model = gltf.scene;
+  const bbox  = new THREE.Box3().setFromObject(model);
+  const sz    = bbox.getSize(new THREE.Vector3());
+  const ctr   = bbox.getCenter(new THREE.Vector3());
+
+  model.position.set(-ctr.x, -bbox.min.y, -ctr.z);
+
+  model.traverse(ch => {
+    if (!ch.isMesh) return;
+    ch.castShadow = true; ch.receiveShadow = true;
+    ch.material = new THREE.MeshStandardMaterial({
+      color: C.mainBldg, roughness: 0.60, metalness: 0.07,
+    });
+  });
+  scene.add(model);
+
+  // ── Scale references ───────────────────────────────────────────────────────
+  const mfp = Math.max(sz.x, sz.z);   // footprint span
+  const MH  = sz.y;                   // model height
+
+  /*
+   * COORDINATE CONVENTION (confirmed by user):
+   *   +Z  = FRONT of building (faces camera / south)
+   *   -Z  = BACK  (north)
+   *   -X  = LEFT  (west, gym side)
+   *   +X  = RIGHT (east, parking + academic side)
+   *
+   * REAL SCENE LAYOUT (from aerial photos):
+   *   Front (+Z)    : circular plaza → curved entry road → small buildings opposite
+   *   Left (-X)     : modern sports gym, wide glass-roof block
+   *   Left-Back(-X,-Z): elevated railway diagonal (SW→NE), ~2 bldg-widths from main
+   *   Right (+X)    : parking lot, then academic long-block cluster
+   *   Right-far (+X): sports courts (tennis/basketball) + dome hall
+   *   Back (-Z)     : dense academic long-blocks (E-W orientation, 2-3 stories)
+   *   Far BG        : residential terrace rows + distant high-rise towers
+   */
+
+  // ── Ground ────────────────────────────────────────────────────────────────
+  const gnd = disk(mfp * 11, C.ground);
+  gnd.position.y = -0.06; scene.add(gnd);
+
+  // Paved highlight under main building
+  const hl = disk(mfp * 0.66, C.plaza);
+  hl.position.y = -0.03; scene.add(hl);
+
+  // Accent rings
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: C.ring, emissive: new THREE.Color(0x1144cc),
+    emissiveIntensity: 2.0, roughness: 0.1, metalness: 0.95
+  });
+  const ringOuter = new THREE.Mesh(new THREE.TorusGeometry(mfp * 0.61, 0.007 * mfp, 16, 160), ringMat);
+  ringOuter.rotation.x = Math.PI / 2; ringOuter.position.y = 0.01; scene.add(ringOuter);
+  const ringInner = new THREE.Mesh(
+    new THREE.TorusGeometry(mfp * 0.28, 0.004 * mfp, 12, 128),
+    new THREE.MeshStandardMaterial({ color: 0x3366cc, emissive: new THREE.Color(0x0a1e55), emissiveIntensity: 0.5, roughness: 0.2, metalness: 0.8 })
+  );
+  ringInner.rotation.x = Math.PI / 2; ringInner.position.y = 0.01; scene.add(ringInner);
+
+  // ── Road network ─────────────────────────────────────────────────────────
+  const rw = mfp * 0.18;
+
+  function addRoad(cx, cz, w, d) {
+    const sw = flatbox(w + (d > w ? mfp * 0.06 : 0), 0.07, d + (d > w ? 0 : mfp * 0.06), C.sidewalk);
+    sw.position.set(cx, 0.02, cz); scene.add(sw);
+    const r = road(w, d);
+    r.position.set(cx, 0.05, cz); scene.add(r);
+  }
+
+  addRoad(0,          mfp * 1.68,  mfp * 9.0, rw      );  // Front E-W (+Z)
+  addRoad(0,         -mfp * 1.52,  mfp * 9.0, rw      );  // Back E-W (under railway)
+  addRoad(0,         -mfp * 2.62,  mfp * 9.0, rw      );  // Second back E-W (between rows 1&2)
+  addRoad(0,         -mfp * 3.45,  mfp * 9.0, rw      );  // Third back E-W (between rows 2&3)
+  addRoad(-mfp*4.20, -mfp * 0.80,  rw, mfp * 8.0      );  // Far-left N-S
+  addRoad( mfp*4.20, -mfp * 0.80,  rw, mfp * 8.0      );  // Far-right N-S
+
+  // ── Circular plaza (+Z front) ─────────────────────────────────────────────
+  const plazaZ = mfp * 1.0;
+  const plazaDisk = disk(mfp * 0.60, C.plaza);
+  plazaDisk.position.set(0, -0.01, plazaZ); scene.add(plazaDisk);
+  const garden = disk(mfp * 0.20, 0x6a7856);
+  garden.position.set(0, 0.02, plazaZ); scene.add(garden);
+
+  // Curved entry road suggestion (arc of flat segments from plaza forward)
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 4 - 0.5) * 0.55;
+    const dist = mfp * 0.9;
+    const rx = Math.sin(ang) * dist;
+    const rz = plazaZ + Math.cos(ang) * dist * 0.18;
+    const seg = flatbox(mfp * 0.22, 0.06, mfp * 0.45, C.sidewalk);
+    seg.rotation.y = ang * 0.7;
+    seg.position.set(rx, 0.03, rz + mfp * 0.45); scene.add(seg);
+  }
+
+  // ── Parking lot (+X right side) ───────────────────────────────────────────
+  const pkW = mfp * 1.1, pkD = mfp * 0.90;
+  const pkFloor = flatbox(pkW, 0.08, pkD, C.road);
+  pkFloor.position.set(mfp * 1.6, 0.02, mfp * 0.05); scene.add(pkFloor);
+  for (let i = -2; i <= 2; i++) {
+    const ln = flatbox(0.04, 0.10, pkD * 0.9, 0x6e6d76);
+    ln.position.set(mfp * 1.6 + i * pkW / 5, 0.06, mfp * 0.05); scene.add(ln);
+  }
+
+  // Helper to batch-add buildings
+  function addBuildings(list) {
+    list.forEach(([x, z, w, h, d, c]) => {
+      const b = building(w, h, d, c, C.bldgFar);
+      b.position.set(x, 0, z);
+      scene.add(b);
+    });
+  }
+
+  // ── LEFT (-X): Wide gym / library block ───────────────────────────────────
+  const GH = MH * 0.30;
+  const gym = building(mfp * 1.70, GH, mfp * 1.05, C.bldgA, C.bldgFar);
+  gym.position.set(-mfp * 2.25, 0, mfp * 0.10); scene.add(gym);
+  // Glass-roof accent strip on top of gym
+  const gymGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(mfp * 1.60, GH * 0.06, mfp * 0.22),
+    mat(0xc8cdd8, 0.30, 0.45)
+  );
+  gymGlass.position.set(-mfp * 2.25, GH + GH * 0.06 / 2, mfp * 0.10);
+  scene.add(gymGlass);
+  addBuildings([
+    [ -mfp*3.08,  mfp*0.55, mfp*0.55, GH*0.62, mfp*0.45, C.bldgB   ],
+    [ -mfp*2.28, -mfp*0.95, mfp*0.82, GH*0.45, mfp*0.62, C.bldgFar ],
+    [ -mfp*3.32, -mfp*0.60, mfp*0.68, GH*0.50, mfp*0.55, C.bldgB   ],
+  ]);
+
+  // ── FRONT (+Z): Buildings across the front road ───────────────────────────
+  addBuildings([
+    [ -mfp*2.12,  mfp*2.18, mfp*0.82, MH*0.30, mfp*0.70, C.bldgFar ],
+    [ -mfp*1.12,  mfp*2.22, mfp*0.72, MH*0.38, mfp*0.62, C.bldgB   ],
+    [ -mfp*0.22,  mfp*2.25, mfp*0.65, MH*0.32, mfp*0.56, C.bldgFar ],
+    [  mfp*0.68,  mfp*2.22, mfp*0.65, MH*0.36, mfp*0.58, C.bldgC   ],
+    [  mfp*1.52,  mfp*2.18, mfp*0.75, MH*0.42, mfp*0.66, C.bldgB   ],
+    [  mfp*2.45,  mfp*2.20, mfp*0.70, MH*0.30, mfp*0.60, C.bldgFar ],
+    [  mfp*3.25,  mfp*2.10, mfp*0.82, MH*0.26, mfp*0.72, C.bldgFar ],
+  ]);
+
+  // ── RIGHT (+X): Academic cluster (medium blocks) ──────────────────────────
+  addBuildings([
+    [  mfp*2.12,  mfp*0.52, mfp*0.75, MH*0.50, mfp*0.68, C.bldgA   ],
+    [  mfp*2.95,  mfp*0.24, mfp*0.68, MH*0.42, mfp*0.60, C.bldgB   ],
+    [  mfp*2.18, -mfp*0.65, mfp*0.72, MH*0.56, mfp*0.52, C.bldgC   ],
+    [  mfp*2.95, -mfp*0.88, mfp*0.62, MH*0.48, mfp*0.55, C.bldgB   ],
+    [  mfp*2.12,  mfp*1.42, mfp*0.88, MH*0.33, mfp*0.82, C.bldgFar ],
+    [  mfp*2.98,  mfp*1.18, mfp*0.58, MH*0.44, mfp*0.55, C.bldgA   ],
+  ]);
+
+  // ── BACK ROW 1 (-Z): long E-W academic blocks, behind railway ─────────────
+  // Railway center at z=-mfp*1.0; rows start at z=-mfp*2.15 (clear of railway)
+  addBuildings([
+    [ -mfp*2.20, -mfp*2.15, mfp*2.20, MH*0.28, mfp*0.55, C.bldgB   ],
+    [ -mfp*0.15, -mfp*2.12, mfp*1.85, MH*0.32, mfp*0.58, C.bldgA   ],
+    [  mfp*1.82, -mfp*2.18, mfp*1.55, MH*0.26, mfp*0.52, C.bldgFar ],
+  ]);
+
+  // ── BACK ROW 2 (-Z deeper) ────────────────────────────────────────────────
+  addBuildings([
+    [ -mfp*2.50, -mfp*3.00, mfp*2.50, MH*0.26, mfp*0.52, C.bldgFar ],
+    [ -mfp*0.20, -mfp*3.05, mfp*2.00, MH*0.30, mfp*0.55, C.bldgB   ],
+    [  mfp*1.90, -mfp*2.98, mfp*1.65, MH*0.24, mfp*0.50, C.bldgFar ],
+  ]);
+
+  // ── BACK ROW 3 (-Z far, shorter — fading into fog) ────────────────────────
+  addBuildings([
+    [ -mfp*2.30, -mfp*3.85, mfp*2.80, MH*0.22, mfp*0.50, C.bldgDeep ],
+    [ -mfp*0.10, -mfp*3.90, mfp*2.40, MH*0.24, mfp*0.48, C.bldgDeep ],
+    [  mfp*2.00, -mfp*3.82, mfp*1.80, MH*0.20, mfp*0.45, C.bldgDeep ],
+  ]);
+
+  // ── BACK ROW 4 (-Z very far, minimal, mostly fog) ─────────────────────────
+  addBuildings([
+    [ -mfp*1.80, -mfp*4.62, mfp*4.20, MH*0.18, mfp*0.45, C.bldgDeep ],
+    [  mfp*2.20, -mfp*4.58, mfp*2.20, MH*0.18, mfp*0.42, C.bldgDeep ],
+  ]);
+
+  // ── SPORTS AREA (+X far right, x > mfp*3.8) ──────────────────────────────
+  {
+    const sx = mfp * 4.60;
+    const sz2 = -mfp * 0.60;
+
+    // Sports dome / hall — low wide cylinder
+    const domeR = mfp * 0.62;
+    const domeH = MH * 0.25;
+    const domeMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(domeR, domeR * 1.05, domeH, 16, 1, false),
+      mat(C.domeColor, 0.65, 0.12)
+    );
+    domeMesh.position.set(sx, domeH / 2, sz2 - mfp * 0.60);
+    domeMesh.castShadow = true; domeMesh.receiveShadow = true;
+    scene.add(domeMesh);
+    // Dome roof cap
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(domeR, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.35),
+      mat(0xb0b5be, 0.60, 0.15)
+    );
+    cap.position.set(sx, domeH, sz2 - mfp * 0.60);
+    cap.castShadow = true; scene.add(cap);
+
+    // Tennis / basketball courts (flat colored rects with center line)
+    const ctW = mfp * 0.55, ctD = mfp * 0.90;
+    for (let i = 0; i < 3; i++) {
+      const ct = flatbox(ctW, 0.06, ctD, C.courtFloor);
+      ct.position.set(sx - mfp * 0.8 + i * (ctW + mfp * 0.08), 0.04, sz2 + mfp * 0.62);
+      scene.add(ct);
+      // Court center line
+      const cl = flatbox(0.04, 0.08, ctD * 0.9, C.courtLine);
+      cl.position.set(sx - mfp * 0.8 + i * (ctW + mfp * 0.08), 0.07, sz2 + mfp * 0.62);
+      scene.add(cl);
+    }
+    // Small support building next to dome
+    const sb = building(mfp * 0.70, MH * 0.22, mfp * 0.55, C.bldgA, C.bldgFar);
+    sb.position.set(sx + mfp * 0.92, 0, sz2 - mfp * 0.55);
+    scene.add(sb);
+  }
+
+  // ── GROUND-LEVEL RAILWAY (N-S, along left boundary) ─────────────────────
+  /*
+   * Real layout (confirmed from aerial photo):
+   *   - Railway runs roughly N-S along the LEFT perimeter of campus
+   *   - Gym complex sits to the RIGHT (east) of the railway
+   *   - Track is at ground level, x ≈ -mfp*4.55, spanning z: +mfp*2.2 → -mfp*5.5
+   *   - Slight diagonal angle (track tilts ~5° west as it heads north)
+   */
+  {
+    const rS_x = -mfp * 4.62, rS_z =  mfp * 2.2;   // south end (front)
+    const rN_x = -mfp * 4.42, rN_z = -mfp * 5.5;   // north end (back)
+    const rCX  = (rS_x + rN_x) / 2;
+    const rCZ  = (rS_z + rN_z) / 2;
+    const rdx  = rN_x - rS_x, rdz = rN_z - rS_z;
+    const rLen = Math.sqrt(rdx * rdx + rdz * rdz);
+    const rAng = -Math.atan2(rdz, rdx);   // ~-90° → track runs along Z
+    const trkW = mfp * 0.30;
+
+    // Ballast bed (dark gravel strip)
+    const ballast = new THREE.Mesh(
+      new THREE.BoxGeometry(rLen, 0.06, trkW),
+      mat(0x4a494f, 0.96, 0.02)
+    );
+    ballast.position.set(rCX, 0.03, rCZ);
+    ballast.rotation.y = rAng;
+    ballast.receiveShadow = true;
+    scene.add(ballast);
+
+    // Two steel rails
+    for (const side of [-0.30, 0.30]) {
+      const perpX = Math.cos(rAng + Math.PI / 2) * side * trkW;
+      const perpZ = -Math.sin(rAng + Math.PI / 2) * side * trkW;
+      const rail = new THREE.Mesh(
+        new THREE.BoxGeometry(rLen, 0.04, trkW * 0.07),
+        mat(C.railSteel, 0.45, 0.60)
+      );
+      rail.position.set(rCX + perpX, 0.07, rCZ + perpZ);
+      rail.rotation.y = rAng;
+      scene.add(rail);
+    }
+
+    // Sleepers (cross-ties) every ~0.18 mfp
+    const nSleepers = Math.round(rLen / (mfp * 0.18));
+    for (let i = 0; i < nSleepers; i++) {
+      const t = i / (nSleepers - 1) - 0.5;
+      const px = rCX + t * rLen * Math.cos(rAng);
+      const pz = rCZ - t * rLen * Math.sin(rAng);
+      const sl = new THREE.Mesh(
+        new THREE.BoxGeometry(trkW * 1.05, 0.04, trkW * 0.13),
+        mat(0x3a3328, 0.94, 0.02)
+      );
+      sl.position.set(px, 0.05, pz);
+      sl.rotation.y = rAng;
+      scene.add(sl);
+    }
+  }
+
+  // ── RESIDENTIAL CARPET (far background, all directions) ───────────────────
+  // Low terrace house rows beyond mfp*5
+  const RH = MH * 0.16;
+  const resiPositions = [];
+
+  // Back residential (rows behind academic blocks)
+  for (let row = 0; row < 4; row++) {
+    const zOff = -mfp * 5.4 - row * mfp * 0.75;
+    for (let col = -6; col <= 5; col++) {
+      resiPositions.push([col * mfp * 0.55, zOff, mfp * 0.42, RH, mfp * 0.32, C.resiBldg]);
+    }
+  }
+  // Left residential
+  for (let row = 0; row < 3; row++) {
+    const xOff = -mfp * 5.5 - row * mfp * 0.65;
+    for (let col = -4; col <= 3; col++) {
+      resiPositions.push([xOff, col * mfp * 0.60, mfp * 0.32, RH, mfp * 0.42, C.resiBldg]);
+    }
+  }
+  // Right residential (beyond sports area)
+  for (let row = 0; row < 3; row++) {
+    const xOff = mfp * 5.8 + row * mfp * 0.68;
+    for (let col = -5; col <= 4; col++) {
+      resiPositions.push([xOff, col * mfp * 0.58, mfp * 0.32, RH, mfp * 0.40, C.resiBldg]);
+    }
+  }
+
+  resiPositions.forEach(([x, z, w, h, d, c]) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, 0.88, 0.03));
+    b.position.set(x, h / 2, z);
+    b.receiveShadow = true; b.castShadow = true;
+    // Roof
+    const rf = flatbox(w + 0.1, h * 0.08, d + 0.1, C.resiRoof);
+    rf.position.set(x, h + h * 0.04, z);
+    scene.add(b); scene.add(rf);
+  });
+
+  // ── DISTANT HIGH-RISE TOWERS (very far background) ─────────────────────────
+  [
+    [-mfp*7.5, -mfp*3.0, mfp*0.55, MH*1.8,  mfp*0.55],
+    [-mfp*8.2, -mfp*5.5, mfp*0.50, MH*2.2,  mfp*0.50],
+    [-mfp*6.8, -mfp*7.0, mfp*0.60, MH*1.5,  mfp*0.60],
+    [ mfp*6.5, -mfp*2.5, mfp*0.52, MH*1.6,  mfp*0.52],
+    [ mfp*7.5, -mfp*5.0, mfp*0.48, MH*2.0,  mfp*0.48],
+    [ mfp*8.0, -mfp*7.5, mfp*0.55, MH*1.4,  mfp*0.55],
+    [-mfp*2.0, -mfp*8.5, mfp*0.60, MH*1.8,  mfp*0.60],
+    [ mfp*1.5, -mfp*8.8, mfp*0.52, MH*2.4,  mfp*0.52],
+    [ mfp*4.5, -mfp*8.2, mfp*0.58, MH*1.6,  mfp*0.58],
+  ].forEach(([x, z, w, h, d]) => {
+    const g = highrise(w, h, d, C.bldgDeep);
+    g.position.set(x, 0, z);
+    scene.add(g);
+  });
+
+  // ── Trees ─────────────────────────────────────────────────────────────────
+  const ts = MH * 0.095;
+
+  const treePositions = [
+    // Flanking main building & plaza (+Z)
+    [ -mfp*0.72,  mfp*0.78 ], [  mfp*0.72,  mfp*0.78 ],
+    [ -mfp*0.50,  mfp*0.56 ], [  mfp*0.50,  mfp*0.56 ],
+    [ -mfp*0.88,  mfp*1.42 ], [  mfp*0.88,  mfp*1.42 ],
+    [ -mfp*1.50,  mfp*1.62 ], [  mfp*1.50,  mfp*1.62 ],
+    [ -mfp*0.42,  mfp*1.82 ], [  mfp*0.42,  mfp*1.82 ],
+    // Left side (-X)
+    [ -mfp*1.05,  mfp*0.05 ], [ -mfp*1.15, -mfp*0.55 ],
+    [ -mfp*1.08, -mfp*1.10 ], [ -mfp*1.95, -mfp*1.32 ],
+    [ -mfp*3.05, -mfp*1.42 ], [ -mfp*3.78,  mfp*0.48 ],
+    [ -mfp*1.08,  mfp*1.58 ], [ -mfp*3.88, -mfp*1.85 ],
+    [ -mfp*2.80,  mfp*0.95 ], [ -mfp*1.52, -mfp*0.28 ],
+    [ -mfp*3.50, -mfp*2.80 ], [ -mfp*2.10, -mfp*0.38 ],
+    // Right side (+X)
+    [  mfp*1.05,  mfp*0.05 ], [  mfp*1.65, -mfp*0.58 ],
+    [  mfp*1.65,  mfp*1.28 ], [  mfp*3.28, -mfp*1.58 ],
+    [  mfp*3.32,  mfp*0.50 ], [  mfp*1.62, -mfp*1.40 ],
+    [  mfp*3.65,  mfp*1.80 ], [  mfp*2.48, -mfp*1.38 ],
+    // Between main and back road
+    [ -mfp*0.52, -mfp*1.18 ], [  mfp*0.48, -mfp*1.12 ],
+    [ -mfp*1.62, -mfp*1.24 ], [  mfp*1.48, -mfp*1.20 ],
+    [ -mfp*2.62, -mfp*0.78 ], [  mfp*2.58, -mfp*1.30 ],
+    [ -mfp*0.52, -mfp*0.65 ], [  mfp*0.48, -mfp*0.68 ],
+    // Between back rows 1 & 2
+    [ -mfp*1.98, -mfp*2.22 ], [  mfp*1.38, -mfp*2.24 ],
+    [ -mfp*0.62, -mfp*2.18 ], [  mfp*0.38, -mfp*2.15 ],
+    [  mfp*2.42, -mfp*2.28 ], [ -mfp*3.12, -mfp*2.32 ],
+    [ -mfp*1.22, -mfp*2.20 ], [  mfp*1.05, -mfp*2.18 ],
+    // Between back rows 2 & 3
+    [ -mfp*1.95, -mfp*3.12 ], [  mfp*1.32, -mfp*3.10 ],
+    [ -mfp*0.58, -mfp*3.15 ], [  mfp*0.30, -mfp*3.08 ],
+    [  mfp*2.35, -mfp*3.18 ], [ -mfp*3.05, -mfp*3.22 ],
+    [ -mfp*1.18, -mfp*3.10 ], [  mfp*1.05, -mfp*3.08 ],
+    // Between rows 3 & 4
+    [ -mfp*2.50, -mfp*4.05 ], [  mfp*1.80, -mfp*4.02 ],
+    [ -mfp*0.80, -mfp*4.08 ], [  mfp*0.20, -mfp*4.05 ],
+    [  mfp*3.20, -mfp*4.10 ], [ -mfp*3.50, -mfp*4.12 ],
+    // Along railway (back-left area, sparse)
+    [ -mfp*3.20, -mfp*0.90 ], [ -mfp*2.92, -mfp*1.82 ],
+    [ -mfp*1.85, -mfp*2.55 ], [ -mfp*0.88, -mfp*3.28 ],
+    // Front far beyond front road
+    [ -mfp*3.05,  mfp*2.82 ], [  mfp*3.18,  mfp*2.85 ],
+    [ -mfp*1.55,  mfp*3.05 ], [  mfp*1.58,  mfp*3.02 ],
+    [  0,          mfp*3.12 ], [ -mfp*2.30,  mfp*3.20 ],
+    [  mfp*2.35,  mfp*3.18 ], [ -mfp*0.65,  mfp*3.30 ],
+    // Sports area edge trees
+    [  mfp*3.75, -mfp*0.30 ], [  mfp*3.78,  mfp*0.60 ],
+    [  mfp*3.72, -mfp*1.50 ], [  mfp*3.80, -mfp*2.40 ],
+  ];
+
+  treePositions.forEach(([x, z]) => {
+    const t = makeTree(ts * (0.85 + Math.random() * 0.30));
+    t.position.set(x, 0, z);
+    scene.add(t);
+  });
+
+  // Dense tree rows along back residential boundary
+  for (let i = -8; i <= 6; i++) {
+    const t = makeTree(ts * 0.75);
+    t.position.set(i * mfp * 0.48, 0, -mfp * 5.18);
+    scene.add(t);
+  }
+
+  // ── Point glow under main building ────────────────────────────────────────
+  const glow = new THREE.PointLight(0x3366ff, 0.38, mfp * 2.8);
+  glow.position.set(0, 0.4, 0); scene.add(glow);
+
+  // ── Camera initial position ────────────────────────────────────────────────
+  const D = Math.max(sz.x, sz.y, sz.z);
+  controls.target.set(0, MH * 0.36, 0);
+  camera.position.set(D * 1.05, D * 0.80, D * 1.38);
+  camera.near = 0.5; camera.far = 1000;
+  camera.updateProjectionMatrix();
+  controls.minDistance = D * 0.28;
+  controls.maxDistance = D * 7.0;
+  controls.update();
+
+  document.getElementById('loading').classList.add('hide');
+  setTimeout(() => document.getElementById('loading').remove(), 800);
+  setTimeout(() => document.getElementById('hint').classList.add('hide'), 5000);
+
+}, undefined, err => {
+  document.getElementById('loading').innerHTML =
+    '<span style="color:#ff5555;font-size:13px;letter-spacing:1px">Load Failed</span>';
+  console.error(err);
+});
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = app.clientWidth / app.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(app.clientWidth, app.clientHeight);
+});
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+window.__cam = camera; window.__ctrl = controls;
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+</script>
+</body>
+</html>
