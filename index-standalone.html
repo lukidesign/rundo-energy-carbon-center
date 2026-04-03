@@ -89,6 +89,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .pa4{animation:fadeUp .6s cubic-bezier(0.4,0,0.2,1) 2.05s both}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
 .floor-in{animation:fadeSlideIn .45s cubic-bezier(0.4,0,0.2,1) both}
+.panel-scroll::-webkit-scrollbar{width:4px}
+.panel-scroll::-webkit-scrollbar-track{background:transparent}
+.panel-scroll::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;transition:background .3s}
+.panel-scroll.sb-show::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.01)}
 @keyframes bearingPulse{0%,100%{opacity:0.5}50%{opacity:1}}
 .bp{animation:bearingPulse 2.2s ease-in-out infinite}
 @keyframes sideBarAnim{0%,100%{opacity:0.7}50%{opacity:1}}
@@ -1305,7 +1309,7 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
                 style={{position:'absolute',left:'23%',top:'16%',width:'59%',height:'65%',zIndex:5,cursor:'pointer',
                   borderRadius:8,
                   transition:'background .2s'}}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.01)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}/>
             </>
           ):(
@@ -1462,6 +1466,16 @@ function App(){
   const [show3D,setShow3D]=useState(false);
   const [panelVisible,setPanelVisible]=useState(true);
   const [panelKey,setPanelKey]=useState(0);
+  const scrollRef=useRef(null);
+  const scrollTimer=useRef(null);
+  function handlePanelScroll(){
+    if(!scrollRef.current)return;
+    scrollRef.current.classList.add('sb-show');
+    clearTimeout(scrollTimer.current);
+    scrollTimer.current=setTimeout(()=>{
+      scrollRef.current&&scrollRef.current.classList.remove('sb-show');
+    },1000);
+  }
   return(
     <EProvider>
       {intro&&<IntroScreen onDone={()=>setIntro(false)}/>}
@@ -1469,7 +1483,7 @@ function App(){
       <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
         <BuildingView onToggle3D={()=>setShow3D(true)} onTogglePanel={()=>setPanelVisible(v=>!v)} panelVisible={panelVisible}
           onRefresh={()=>setPanelKey(k=>k+1)}/>
-        <div style={{position:'absolute',left:0,top:0,width:420,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:20,overflowY:'auto',overflowX:'hidden',zIndex:5,
+        <div ref={scrollRef} className="panel-scroll" onScroll={handlePanelScroll} style={{position:'absolute',left:0,top:0,width:420,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:20,overflowY:'auto',overflowX:'hidden',zIndex:5,
           transform:panelVisible?'translateX(0)':'translateX(-440px)',
           transition:'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
           pointerEvents:panelVisible?'auto':'none'}}>
