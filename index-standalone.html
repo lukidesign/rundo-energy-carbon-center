@@ -94,6 +94,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .panel-scroll::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;transition:background .3s}
 .panel-scroll.sb-show::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.01)}
 @keyframes bearingPulse{0%,100%{opacity:0.5}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading{position:fixed;inset:0;background:#07090f;display:flex;align-items:center;justify-content:center;z-index:500;pointer-events:none;transition:opacity .4s}
+#loading-ring{width:36px;height:36px;border:2px solid rgba(255,255,255,0.08);border-top-color:#00e5a0;border-radius:50%;animation:spin .8s linear infinite}
 .bp{animation:bearingPulse 2.2s ease-in-out infinite}
 @keyframes sideBarAnim{0%,100%{opacity:0.7}50%{opacity:1}}
 .sb{animation:sideBarAnim 1.8s ease-in-out infinite}
@@ -110,6 +113,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 </head>
 <body>
 <div id="root"></div>
+<div id="loading"><div id="loading-ring"></div></div>
 
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback,createContext,useContext}=React;
@@ -1466,6 +1470,7 @@ function App(){
   const [show3D,setShow3D]=useState(false);
   const [panelVisible,setPanelVisible]=useState(true);
   const [panelKey,setPanelKey]=useState(0);
+  useEffect(()=>{const el=document.getElementById('loading');if(el){el.style.opacity='0';setTimeout(()=>el.remove(),400);}}, []);
   const scrollRef=useRef(null);
   const scrollTimer=useRef(null);
   function handlePanelScroll(){
@@ -1494,7 +1499,7 @@ function App(){
             <SavingsChart/>
           </React.Fragment>
         </div>
-        <a href="rd/RunDo-ECM-v0.6-2026-03-31.html" target="_blank" rel="noopener noreferrer"
+        <a href="rd/RunDo-ECM-v0.6-2026-03-31.html" target="_blank"
           style={{position:'absolute',top:16,right:16,zIndex:50,width:36,height:36,borderRadius:18,background:'linear-gradient(135deg,rgba(143,231,163,0.12) 0%,rgba(23,204,200,0.12) 100%)',border:'1px solid rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)',cursor:'pointer',textDecoration:'none',transition:'box-shadow .2s'}}
           onMouseEnter={e=>e.currentTarget.style.boxShadow='0 0 14px rgba(23,204,200,0.5)'}
           onMouseLeave={e=>e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.4)'}>
