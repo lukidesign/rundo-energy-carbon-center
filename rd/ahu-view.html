@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AHU Monitor</title>
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body {
+  background:#0b1224;
+  width:100vw;height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;
+  overflow:hidden;
+  user-select:none;
+}
+
+/* ── Fade in ── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.wrap { animation:fadeIn .6s ease both; }
+
+/* ── Wave animation ── */
+@keyframes waveY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.w1{animation:waveY 2s ease-in-out infinite}
+.w2{animation:waveY 2s ease-in-out infinite;animation-delay:.25s}
+.w3{animation:waveY 2s ease-in-out infinite;animation-delay:.5s}
+.w4{animation:waveY 2s ease-in-out infinite;animation-delay:.75s}
+.w5{animation:waveY 2s ease-in-out infinite;animation-delay:1s}
+
+/* ── Fan spin ── */
+@keyframes fanSpin { to{transform:rotate(360deg)} }
+.fan-g {
+  animation:fanSpin 1.1s linear infinite;
+  transform-origin:19px 19px;
+  transform-box:fill-box;
+}
+
+/* ── Pipe flow (dashed) ── */
+@keyframes dashF { to{stroke-dashoffset:-14} }
+@keyframes dashR { to{stroke-dashoffset:14} }
+.df  { stroke-dasharray:5 3;animation:dashF .85s linear infinite }
+.dr  { stroke-dasharray:5 3;animation:dashR .85s linear infinite }
+.dfs { stroke-dasharray:4 3;animation:dashF 1.05s linear infinite }
+.drs { stroke-dasharray:4 3;animation:dashR 1.05s linear infinite }
+
+/* ── Running dot pulse ── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.pulse { animation:pulse 2.2s ease-in-out infinite }
+
+/* ── Supply arrow flow ── */
+@keyframes arrowF { to{stroke-dashoffset:-18} }
+.af { stroke-dasharray:6 4;animation:arrowF .7s linear infinite }
+</style>
+</head>
+<body>
+<div class="wrap" style="width:min(880px,94vw);position:relative;">
+
+  <!-- ═══════════════════════════════════════
+       AIR INLET LABELS + DASHED CONNECTORS
+  ════════════════════════════════════════ -->
+  <div style="position:relative;height:68px;">
+    <!-- Fresh label -->
+    <div style="position:absolute;left:8%;top:2px;font-size:11px;color:rgba(255,255,255,.38);line-height:1.65;text-align:center;">
+      Fresh<br><span style="color:#00c896;font-size:12.5px;font-weight:600;">34.2°C</span>
+    </div>
+    <!-- Return label -->
+    <div style="position:absolute;left:47%;top:2px;font-size:11px;color:rgba(255,255,255,.38);line-height:1.65;text-align:center;">
+      Return<br><span style="color:#00c896;font-size:12.5px;font-weight:600;">26.2°C</span>
+    </div>
+    <!-- Connector lines SVG -->
+    <svg style="position:absolute;inset:0;width:100%;height:68px;overflow:visible;" viewBox="0 0 880 68" preserveAspectRatio="xMidYMid meet">
+      <!-- Fresh vertical -->
+      <line class="dfs" x1="86" y1="38" x2="86" y2="68" stroke="#2e5580" stroke-width="1.4"/>
+      <!-- Return vertical (shorter, meets horizontal) -->
+      <line class="dfs" x1="428" y1="38" x2="428" y2="58" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.3s"/>
+      <!-- Horizontal bridge Fresh→Return -->
+      <line class="dfs" x1="86" y1="58" x2="428" y2="58" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.15s"/>
+      <!-- Junction dot at Return -->
+      <circle cx="428" cy="58" r="3.5" fill="#4a80b0"/>
+    </svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MAIN AHU BOX
+  ════════════════════════════════════════ -->
+  <div style="position:relative;border:1px solid rgba(70,120,200,.18);border-radius:3px;height:215px;background:rgba(255,255,255,.015);display:flex;overflow:hidden;">
+
+    <!-- Running status (top-right) -->
+    <div style="position:absolute;top:10px;right:14px;z-index:2;text-align:right;">
+      <div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;">
+        <div class="pulse" style="width:7px;height:7px;border-radius:50%;background:#00e090;box-shadow:0 0 7px #00e09088;"></div>
+        <span style="color:#00e090;font-size:11px;font-weight:600;letter-spacing:.5px;">Running</span>
+      </div>
+      <div style="color:rgba(255,255,255,.25);font-size:10px;letter-spacing:1px;margin-top:2px;">Supply Air</div>
+    </div>
+
+    <!-- ── MIXING ─────────────────────── -->
+    <div style="flex:0 0 140px;border-right:1px solid rgba(70,120,200,.1);padding:10px 8px 8px;display:flex;flex-direction:column;position:relative;">
+      <span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.24);margin-bottom:6px;">Mixing</span>
+      <div style="flex:1;display:flex;align-items:center;gap:8px;">
+        <div style="width:3px;height:64px;background:linear-gradient(to bottom,#4ab8ff,#00c896);border-radius:2px;flex-shrink:0;"></div>
+        <div style="font-size:12px;line-height:2.1;">
+          <div style="color:#00c896;font-weight:600;">30% fresh</div>
+          <div style="color:rgba(255,255,255,.35);">70% return</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.22);letter-spacing:.4px;text-align:center;margin-top:4px;">Mixed 24.8°C</div>
+    </div>
+
+    <!-- ── FILTER ──────────────────────── -->
+    <div style="flex:0 0 122px;border-right:1px solid rgba(70,120,200,.1);padding:10px 8px 8px;display:flex;flex-direction:column;align-items:center;position:relative;">
+      <span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.24);margin-bottom:6px;align-self:flex-start;">Filter</span>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;">
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.42);border-radius:1px;"></div>
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.42);border-radius:1px;"></div>
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.42);border-radius:1px;"></div>
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.42);border-radius:1px;"></div>
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.42);border-radius:1px;"></div>
+        <div style="width:2px;height:66px;background:rgba(160,195,255,.28);border-radius:1px;"></div>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.58);margin-top:4px;">G4+F7</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.22);letter-spacing:.4px;margin-top:2px;">ΔP 80 Pa</div>
+    </div>
+
+    <!-- ── COOLING COIL ────────────────── -->
+    <div style="flex:1;border-right:1px solid rgba(70,120,200,.1);padding:10px 8px 8px;display:flex;flex-direction:column;align-items:center;position:relative;">
+      <span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.24);margin-bottom:4px;align-self:flex-start;">Cooling Coil</span>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;">
+        <svg viewBox="0 0 140 96" width="140" height="96" style="overflow:visible;">
+          <path class="w1" d="M2,14 Q18,2 34,14 Q50,26 66,14 Q82,2 98,14 Q114,26 130,14 Q136,10 140,12" fill="none" stroke="#4ab8ff" stroke-width="2.3" stroke-linecap="round"/>
+          <path class="w2" d="M2,28 Q18,16 34,28 Q50,40 66,28 Q82,16 98,28 Q114,40 130,28 Q136,24 140,26" fill="none" stroke="#4ab8ff" stroke-width="2.3" stroke-linecap="round"/>
+          <path class="w3" d="M2,42 Q18,30 34,42 Q50,54 66,42 Q82,30 98,42 Q114,54 130,42 Q136,38 140,40" fill="none" stroke="#4ab8ff" stroke-width="2.3" stroke-linecap="round"/>
+          <path class="w4" d="M2,56 Q18,44 34,56 Q50,68 66,56 Q82,44 98,56 Q114,68 130,56 Q136,52 140,54" fill="none" stroke="#4ab8ff" stroke-width="2.3" stroke-linecap="round"/>
+          <path class="w5" d="M2,70 Q18,58 34,70 Q50,82 66,70 Q82,58 98,70 Q114,82 130,70 Q136,66 140,68" fill="none" stroke="#4ab8ff" stroke-width="2.3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#4ab8ff;letter-spacing:.3px;padding-bottom:8px;">8.0→12.0°C</div>
+    </div>
+
+    <!-- ── FAN ─────────────────────────── -->
+    <div style="flex:0 0 150px;border-right:1px solid rgba(70,120,200,.1);padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;position:relative;">
+      <span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.24);margin-bottom:6px;align-self:flex-start;">Fan</span>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;">
+        <!-- Spinning fan circle -->
+        <div style="width:70px;height:70px;border:2px solid #00c896;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(0,200,150,.2);">
+          <svg width="38" height="38" viewBox="0 0 38 38" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round">
+            <g class="fan-g">
+              <line x1="19" y1="3"  x2="19" y2="35"/>
+              <line x1="3"  y1="19" x2="35" y2="19"/>
+              <line x1="8"  y1="8"  x2="30" y2="30"/>
+              <line x1="30" y1="8"  x2="8"  y2="30"/>
+            </g>
+          </svg>
+        </div>
+        <div style="color:#00c896;font-size:17px;font-weight:600;letter-spacing:.5px;">42 Hz</div>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.22);letter-spacing:.4px;text-align:center;margin-top:4px;">15 kW</div>
+    </div>
+
+    <!-- ── SUPPLY EXIT ─────────────────── -->
+    <div style="flex:0 0 112px;display:flex;flex-direction:column;justify-content:center;padding:0 10px 0 14px;">
+      <!-- Dot + animated arrows -->
+      <div style="display:flex;align-items:center;margin-bottom:14px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:#4ab8ff;flex-shrink:0;box-shadow:0 0 6px #4ab8ff88;margin-right:5px;"></div>
+        <svg width="64" height="22" viewBox="0 0 64 22" fill="none">
+          <!-- Top arrow -->
+          <line class="af" x1="0" y1="7" x2="50" y2="7" stroke="#4ab8ff" stroke-width="1.6" stroke-linecap="round"/>
+          <polyline points="42,3 50,7 42,11" stroke="#4ab8ff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <!-- Bottom arrow (dimmer) -->
+          <line class="af" x1="0" y1="15" x2="50" y2="15" stroke="#4ab8ff" stroke-width="1.6" stroke-linecap="round" style="animation-delay:.35s;opacity:.45;"/>
+          <polyline points="42,11 50,15 42,19" stroke="#4ab8ff" stroke-width="1.6" fill="none" stroke-linecap="round" style="opacity:.45;"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:300;color:rgba(255,255,255,.85);letter-spacing:.3px;">16.5°C</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.5px;margin-top:3px;">RH 92%</div>
+      </div>
+    </div>
+
+  </div><!-- /AHU box -->
+
+  <!-- ═══════════════════════════════════════
+       CHW PIPING
+       Cooling coil = flex:1 of (880 - 140 - 122 - 150 - 112) = 356px
+       Cooling coil center = 140+122 + 356/2 = 440px from left
+  ════════════════════════════════════════ -->
+  <div style="position:relative;height:94px;">
+    <svg style="position:absolute;top:0;left:0;width:100%;height:94px;overflow:visible;" viewBox="0 0 880 94" preserveAspectRatio="xMidYMid meet">
+      <!-- Vertical line down from AHU base (cooling coil center ~x=440) -->
+      <line class="dfs" x1="440" y1="0" x2="440" y2="38" stroke="#2e5580" stroke-width="1.4"/>
+      <!-- Junction dot -->
+      <circle cx="440" cy="38" r="3.5" fill="#4a80b0"/>
+      <!-- Horizontal right to valve -->
+      <line class="dfs" x1="440" y1="54" x2="628" y2="54" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.2s"/>
+      <!-- 2-way valve X symbol at x=636-660 -->
+      <line x1="630" y1="44" x2="656" y2="68" stroke="#00c896" stroke-width="2.2" stroke-linecap="round"/>
+      <line x1="656" y1="44" x2="630" y2="68" stroke="#00c896" stroke-width="2.2" stroke-linecap="round"/>
+      <!-- Horizontal right of valve -->
+      <line class="dfs" x1="666" y1="54" x2="748" y2="54" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.4s"/>
+      <polyline points="738,48 748,54 738,60" stroke="#2e5580" stroke-width="1.2" fill="none"/>
+      <!-- CHW Return horizontal line going left (return flow) -->
+      <line class="drs" x1="200" y1="54" x2="430" y2="54" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.3s"/>
+      <polyline points="210,48 200,54 210,60" stroke="#2e5580" stroke-width="1.2" fill="none"/>
+      <!-- Vertical line down (CHW Return) -->
+      <line class="dfs" x1="440" y1="38" x2="440" y2="94" stroke="#2e5580" stroke-width="1.4" style="animation-delay:.5s"/>
+    </svg>
+
+    <!-- CHW Supply label -->
+    <div style="position:absolute;top:24px;left:calc(50% + 8px);font-size:11px;line-height:1.65;white-space:nowrap;">
+      <div style="color:#00c896;font-weight:600;">7.0°C</div>
+      <div style="color:rgba(255,255,255,.27);font-size:10px;letter-spacing:.4px;">CHW Supply</div>
+    </div>
+
+    <!-- CHW Return label -->
+    <div style="position:absolute;bottom:0;left:calc(50% + 8px);font-size:11px;line-height:1.65;white-space:nowrap;">
+      <div style="color:#00c896;font-weight:600;">12.0°C</div>
+      <div style="color:rgba(255,255,255,.27);font-size:10px;letter-spacing:.4px;">CHW Return</div>
+    </div>
+
+    <!-- Open 72% / 2-way Valve label (right of X, x≈666) -->
+    <div style="position:absolute;top:28px;left:76%;font-size:11px;line-height:1.65;white-space:nowrap;">
+      <div style="color:#00c896;font-weight:600;">Open 72%</div>
+      <div style="color:rgba(255,255,255,.27);font-size:10px;letter-spacing:.4px;">2-way Valve</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       BOTTOM STATS
+  ════════════════════════════════════════ -->
+  <div style="display:flex;justify-content:space-around;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.04);">
+    <div style="text-align:center;">
+      <div style="font-size:23px;font-weight:300;color:#00c896;letter-spacing:.3px;">
+        2,680 <span style="font-size:14px;color:rgba(255,255,255,.4);">m³/h</span>
+      </div>
+      <div style="margin-top:4px;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.2);">Real-time Airflow</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:23px;font-weight:300;color:#00c896;letter-spacing:.3px;">
+        15 <span style="font-size:14px;color:rgba(255,255,255,.4);">kW</span>
+      </div>
+      <div style="margin-top:4px;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.2);">Fan Power</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:23px;font-weight:300;color:#00c896;letter-spacing:.3px;">ΔT 5.0°C</div>
+      <div style="margin-top:4px;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.2);">CHW Delta T</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+</body>
+</html>
