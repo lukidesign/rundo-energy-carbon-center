@@ -1194,9 +1194,9 @@ function MapControls({onToggle3D,onTogglePanel,panelVisible,onRefresh,tab,onTogg
 /* ══════════════════ VIEW CARDS ══════════════════════════════════ */
 // 3 cards — each with its own thumbnail image, crop, and modal image
 const VIEW_CARD_DEFS=[
-  {src:'rd/view1.png', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/chiller-plant.html'},
-  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/ntimg01.png'},
-  {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ahu-view.html'},
+  {src:'rd/view1.png', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/ahu-view.html'},
+  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/chiller-plant.html'},
+  {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/chiller-plant.html'},
 ];
 function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
   const [hover,setHover]=useState(false);
