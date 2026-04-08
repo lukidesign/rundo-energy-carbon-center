@@ -225,11 +225,12 @@ function drawRow(row,idx){
   let s='';
 
   // CW supply (orange →): header → pump → valve → chiller
+  // CW supply (orange →): header → pump → chiller (no valve)
   s+=`<line class="cw-sup" x1="${CW_SUP_X}"    y1="${sY}" x2="${CW_PUMP_X-21}" y2="${sY}" style="animation-delay:${d}s"/>`;
-  s+=`<line class="cw-sup" x1="${CW_PUMP_X+21}" y1="${sY}" x2="${CW_VLV_X-12}" y2="${sY}" style="animation-delay:${d+.1}s"/>`;
-  s+=`<line class="cw-sup" x1="${CW_VLV_X+12}" y1="${sY}" x2="${CH_LEFT}"      y2="${sY}" style="animation-delay:${d+.2}s"/>`;
-  // CW return (red ←): chiller → header
-  s+=`<line class="cw-ret" x1="${CH_LEFT}" y1="${rY}" x2="${CW_RET_X}" y2="${rY}" style="animation-delay:${d+.05}s"/>`;
+  s+=`<line class="cw-sup" x1="${CW_PUMP_X+21}" y1="${sY}" x2="${CH_LEFT}"     y2="${sY}" style="animation-delay:${d+.1}s"/>`;
+  // CW return (red ←): chiller → valve → header
+  s+=`<line class="cw-ret" x1="${CH_LEFT}"      y1="${rY}" x2="${CW_VLV_X+12}" y2="${rY}" style="animation-delay:${d+.05}s"/>`;
+  s+=`<line class="cw-ret" x1="${CW_VLV_X-12}" y1="${rY}" x2="${CW_RET_X}"    y2="${rY}" style="animation-delay:${d+.1}s"/>`;
 
   // CHW supply (blue →): chiller → valve → pump → header
   s+=`<line class="chw-sup" x1="${CH_RIGHT}"     y1="${sY}" x2="${CHW_VLV_X-12}"  y2="${sY}" style="animation-delay:${d+.1}s"/>`;
@@ -243,9 +244,9 @@ function drawRow(row,idx){
   s+=lbl(CW_PUMP_X, sY-44, `CW Pump-${id}`, 'rgba(255,255,255,.54)', 9.5, 'middle');
   s+=rem(CW_PUMP_X, sY-30);
 
-  // ── CW valve ─────────────────────────────────
-  s+=valve(CW_VLV_X, sY, '#f0a020');
-  s+=lbl(CW_VLV_X, sY-26, `CW Valve-${id}`, 'rgba(255,255,255,.42)', 9, 'middle');
+  // ── CW valve (on return pipe, red) ───────────
+  s+=valve(CW_VLV_X, rY, '#d84030');
+  s+=lbl(CW_VLV_X, rY+24, `CW Valve-${id}`, 'rgba(255,255,255,.42)', 9, 'middle');
 
   // ── Chiller box ───────────────────────────────
   s+=chiller(id, brand, pct, kw, y);
