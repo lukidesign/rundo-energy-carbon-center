@@ -232,12 +232,12 @@ function drawRow(row,idx){
   s+=`<line class="cw-ret" x1="${CH_LEFT}"      y1="${rY}" x2="${CW_VLV_X+12}" y2="${rY}" style="animation-delay:${d+.05}s"/>`;
   s+=`<line class="cw-ret" x1="${CW_VLV_X-12}" y1="${rY}" x2="${CW_RET_X}"    y2="${rY}" style="animation-delay:${d+.1}s"/>`;
 
-  // CHW supply (blue →): chiller → valve → pump → header
-  s+=`<line class="chw-sup" x1="${CH_RIGHT}"     y1="${sY}" x2="${CHW_VLV_X-12}"  y2="${sY}" style="animation-delay:${d+.1}s"/>`;
-  s+=`<line class="chw-sup" x1="${CHW_VLV_X+12}" y1="${sY}" x2="${CHW_PUMP_X-21}" y2="${sY}" style="animation-delay:${d+.2}s"/>`;
-  s+=`<line class="chw-sup" x1="${CHW_PUMP_X+21}" y1="${sY}" x2="${CHW_SUP_X}"    y2="${sY}" style="animation-delay:${d+.3}s"/>`;
-  // CHW return (teal ←): header → chiller
-  s+=`<line class="chw-ret" x1="${CHW_RET_X}" y1="${rY}" x2="${CH_RIGHT}" y2="${rY}" style="animation-delay:${d+.05}s"/>`;
+  // CHW supply (blue →): chiller → header (no pump/valve)
+  s+=`<line class="chw-sup" x1="${CH_RIGHT}" y1="${sY}" x2="${CHW_SUP_X}" y2="${sY}" style="animation-delay:${d+.1}s"/>`;
+  // CHW return (teal ←): header → pump → valve → chiller
+  s+=`<line class="chw-ret" x1="${CHW_RET_X}"    y1="${rY}" x2="${CHW_PUMP_X+21}" y2="${rY}" style="animation-delay:${d+.05}s"/>`;
+  s+=`<line class="chw-ret" x1="${CHW_PUMP_X-21}" y1="${rY}" x2="${CHW_VLV_X+12}" y2="${rY}" style="animation-delay:${d+.1}s"/>`;
+  s+=`<line class="chw-ret" x1="${CHW_VLV_X-12}" y1="${rY}" x2="${CH_RIGHT}"      y2="${rY}" style="animation-delay:${d+.2}s"/>`;
 
   // ── CW pump — label above, Hz below ──────────
   s+=pump(CW_PUMP_X, sY, cwHz, `cw${id}`, '#f0a020');
@@ -251,14 +251,14 @@ function drawRow(row,idx){
   // ── Chiller box ───────────────────────────────
   s+=chiller(id, brand, pct, kw, y);
 
-  // ── CHW valve ─────────────────────────────────
-  s+=valve(CHW_VLV_X, sY, '#4ab8ff');
-  s+=lbl(CHW_VLV_X, sY-26, `CHW Valve-${id}`, 'rgba(255,255,255,.42)', 9, 'middle');
+  // ── CHW valve (on return pipe, green) ────────
+  s+=valve(CHW_VLV_X, rY, '#00c896');
+  s+=lbl(CHW_VLV_X, rY+24, `CHW Valve-${id}`, 'rgba(255,255,255,.42)', 9, 'middle');
 
-  // ── CHW pump ──────────────────────────────────
-  s+=pump(CHW_PUMP_X, sY, chwHz, `chw${id}`, '#4ab8ff');
-  s+=lbl(CHW_PUMP_X, sY-44, `CHW Pump-${id}`, 'rgba(255,255,255,.54)', 9.5, 'middle');
-  s+=rem(CHW_PUMP_X, sY-30);
+  // ── CHW pump (on return pipe, green) ─────────
+  s+=pump(CHW_PUMP_X, rY, chwHz, `chw${id}`, '#00c896');
+  s+=lbl(CHW_PUMP_X, rY-44, `CHW Pump-${id}`, 'rgba(255,255,255,.54)', 9.5, 'middle');
+  s+=rem(CHW_PUMP_X, rY-30);
 
   // ── Temp sensors (row 1 only, placed on pipe segments) ────────
   if(idx===0){
