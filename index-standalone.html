@@ -151,13 +151,13 @@ const BAR=[
   {t:'18:00',c:168,o:272},{t:'',c:199,o:291},{t:'',c:96,o:168},{t:'Now',c:80,o:120},
 ];
 const SAVINGS=[
-  {d:'1 Dec', cost:1400, en:900},
-  {d:'5 Dec', cost:2900, en:1500},
-  {d:'10 Dec',cost:6200, en:2400},
-  {d:'15 Dec',cost:9400, en:2900},
-  {d:'20 Dec',cost:5600, en:2300},
-  {d:'25 Dec',cost:6800, en:3100},
-  {d:'30 Dec',cost:5200, en:2100},
+  {d:'1 Dec', cost:6580,  en:900},
+  {d:'5 Dec', cost:13630, en:1500},
+  {d:'10 Dec',cost:29140, en:2400},
+  {d:'15 Dec',cost:44180, en:2900},
+  {d:'20 Dec',cost:26320, en:2300},
+  {d:'25 Dec',cost:31960, en:3100},
+  {d:'30 Dec',cost:24440, en:2100},
 ];
 
 /* ══════════════════ ENERGY CONTEXT ═════════════════════════════ */
@@ -185,13 +185,13 @@ const AI_REPLIES={
   'default':[
     "I'm analyzing the current building data. Floor 11F is showing optimal energy usage at **152 kWh** — 24% below the building average. Would you like me to apply similar optimization patterns to other floors?",
     "Based on real-time sensor data, I've identified **3 optimization opportunities** across the building. The most impactful is adjusting HVAC schedules on floors 14-16 during off-peak hours.",
-    "Current building efficiency score: **78/100**. Implementing the AI suggestions could improve this to **94/100**, saving approximately **$4,300/month** in energy costs.",
+    "Current building efficiency score: **78/100**. Implementing the AI suggestions could improve this to **94/100**, saving approximately **RM 20,200/month** in energy costs.",
   ],
-  'energy':"**Energy Analysis:**\n\nCurrent daily consumption is **335 kWh**, with peak usage between 10:00–14:00. After applying AI optimization:\n\n• HVAC: –18% savings\n• Lighting: –12% savings\n• Equipment: –9% savings\n\nProjected monthly savings: **$4,300** and **135 kg CO₂** reduction.",
+  'energy':"**Energy Analysis:**\n\nCurrent daily consumption is **335 kWh**, with peak usage between 10:00–14:00. After applying AI optimization:\n\n• HVAC: –18% savings\n• Lighting: –12% savings\n• Equipment: –9% savings\n\nProjected monthly savings: **RM 20,200** and **135 kg CO₂** reduction.",
   'floor':"**Floor 11F Status:**\n\n✅ Energy: 152 kWh (optimized)\n✅ Occupancy: 87% during business hours\n✅ Air quality: Good (CO₂: 420 ppm)\n⚠️ Temperature variance: +1.2°C vs setpoint\n\nRecommendation: Minor HVAC adjustment needed.",
   'alert':"**Active Alerts:**\n\n🔴 Floor 14F: Energy consumption 332 kWh — **38% above average**\n🟡 Floor 15F: Ventilation efficiency dropping\n🟢 Floors 11F–13F: All within normal range\n\nWould you like me to auto-apply corrections?",
-  'optimize':"I'll initiate the optimization sequence now.\n\n**Applying changes:**\n• Floor 14F: Reducing HVAC by 25% during 22:00–06:00 ✓\n• Floor 15F: Adjusting ventilation schedule ✓\n• Floor 16F: Enabling occupancy-based lighting ✓\n\nEstimated impact: **–$1,200/month** in savings. Changes will take effect within 15 minutes.",
-  'report':"**Weekly Summary Report:**\n\n📊 Total consumption: **1,437 kWh**\n📈 vs last week: –8.3%\n💰 Cost savings: **$2,400**\n🌿 CO₂ reduced: **89 kg**\n\nTop performer: **Floor 11F** (–24% vs baseline)\nNeeds attention: **Floor 14F** (overuse pattern detected)\n\nFull report exported to dashboard.",
+  'optimize':"I'll initiate the optimization sequence now.\n\n**Applying changes:**\n• Floor 14F: Reducing HVAC by 25% during 22:00–06:00 ✓\n• Floor 15F: Adjusting ventilation schedule ✓\n• Floor 16F: Enabling occupancy-based lighting ✓\n\nEstimated impact: **–RM 5,640/month** in savings. Changes will take effect within 15 minutes.",
+  'report':"**Weekly Summary Report:**\n\n📊 Total consumption: **1,437 kWh**\n📈 vs last week: –8.3%\n💰 Cost savings: **RM 11,280**\n🌿 CO₂ reduced: **89 kg**\n\nTop performer: **Floor 11F** (–24% vs baseline)\nNeeds attention: **Floor 14F** (overuse pattern detected)\n\nFull report exported to dashboard.",
 };
 const QUICK_PROMPTS=[
   {label:'⚡ Energy status',key:'energy'},
@@ -378,7 +378,7 @@ function AIDetailModal({onClose}){
             {[
               {v:'70%',l:'Vacancy rate',sub:'Non-business hours',c:'#ef4444'},
               {v:'−25%',l:'Energy savings',sub:'Projected reduction',c:'#22c55e'},
-              {v:'$1,840',l:'Monthly savings',sub:'Cost projection',c:'#5576ef'},
+              {v:'RM 8,650',l:'Monthly savings',sub:'Cost projection',c:'#5576ef'},
             ].map(m=>(
               <div key={m.l} style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px'}}>
                 <div style={{fontSize:22,fontWeight:700,color:m.c,marginBottom:2}}>{m.v}</div>
@@ -779,7 +779,7 @@ function SavingsChart(){
       </div>
       <div style={{flex:1,display:'flex',flexDirection:'column',background:'rgba(24,25,31,0.90)',backdropFilter:'blur(2px)',WebkitBackdropFilter:'blur(2px)',borderRadius:10,padding:16,minHeight:0,gap:12}}>
         <div style={{display:'flex',gap:16}}>
-          {[['4.3k','$','Cost savings'],['2.4k','kWh','Energy savings'],['135','CO²','Emission']].map(([v,u,l])=>(
+          {[['20.2k','RM','Cost savings'],['2.4k','kWh','Energy savings'],['135','CO²','Emission']].map(([v,u,l])=>(
             <div key={l} style={{flex:1}}>
               <div style={{display:'flex',alignItems:'baseline',gap:3}}>
                 <span style={{fontSize:20,fontWeight:500,color:'#fff'}}>{v}</span>
