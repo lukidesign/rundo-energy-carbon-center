@@ -1008,6 +1008,8 @@ function FloorSelector({panelVisible=true}){
 /* ══════════════════ GLOBE 3D ════════════════════════════════════ */
 function Globe3D({onClose}){
   const mountRef=useRef(null);
+  const [showBldg,setShowBldg]=useState(false);
+  const flyRef=useRef({active:false,targetRy:0,targetRx:0,onDone:null});
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;
     const W=el.clientWidth,H=el.clientHeight;
@@ -1029,6 +1031,66 @@ function Globe3D({onClose}){
 
     // Globe group
     const group=new THREE.Group();scene.add(group);
+
+    // ── TAR UMT Marker ───────────────────────────────────────────────
+    function latLngTo3D(lat,lng,r){
+      const phi=(90-lat)*Math.PI/180;
+      const theta=(lng+180)*Math.PI/180;
+      return new THREE.Vector3(
+        -Math.sin(phi)*Math.cos(theta)*r,
+         Math.cos(phi)*r,
+         Math.sin(phi)*Math.sin(theta)*r
+      );
+    }
+    const LAT=3.2163,LNG=101.7291;
+    const mPos=latLngTo3D(LAT,LNG,1.012);
+    // 红色圆点
+    const dotMesh=new THREE.Mesh(
+      new THREE.SphereGeometry(0.022,16,16),
+      new THREE.MeshBasicMaterial({color:0xff3333})
+    );
+    dotMesh.position.copy(mPos);
+    dotMesh.userData={isMarker:true};
+    group.add(dotMesh);
+    // 不可见大碰撞球（更易点击）
+    const hitMesh=new THREE.Mesh(
+      new THREE.SphereGeometry(0.06,8,8),
+      new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})
+    );
+    hitMesh.position.copy(mPos);
+    hitMesh.userData={isMarker:true};
+    group.add(hitMesh);
+    // 2 个脉冲环（相位错开 0.5）
+    const pulses=[];
+    for(let i=0;i<2;i++){
+      const pm=new THREE.Mesh(
+        new THREE.RingGeometry(0.022,0.032,32),
+        new THREE.MeshBasicMaterial({color:0xff4444,transparent:true,opacity:0.7,side:THREE.DoubleSide})
+      );
+      pm.position.copy(mPos);
+      pm.lookAt(new THREE.Vector3(0,0,0));
+      pm.rotateX(Math.PI/2);
+      pm.userData={isPulse:true,phase:i*0.5};
+      group.add(pm);pulses.push(pm);
+    }
+    // 文字 Sprite
+    const lc=document.createElement('canvas');lc.width=256;lc.height=64;
+    const lctx=lc.getContext('2d');
+    lctx.fillStyle='rgba(0,0,0,0.72)';
+    lctx.beginPath();lctx.moveTo(12,8);lctx.lineTo(244,8);
+    lctx.arcTo(252,8,252,16,8);lctx.lineTo(252,48);lctx.arcTo(252,56,244,56,8);
+    lctx.lineTo(12,56);lctx.arcTo(4,56,4,48,8);lctx.lineTo(4,16);lctx.arcTo(4,8,12,8,8);
+    lctx.closePath();lctx.fill();
+    lctx.fillStyle='#ffffff';lctx.font='bold 22px Arial,sans-serif';
+    lctx.textAlign='center';lctx.textBaseline='middle';
+    lctx.fillText('TAR UMT',128,32);
+    const lsprite=new THREE.Sprite(
+      new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true})
+    );
+    lsprite.position.copy(latLngTo3D(LAT,LNG,1.18));
+    lsprite.scale.set(0.38,0.095,1);
+    group.add(lsprite);
+    // ─────────────────────────────────────────────────────────────────
 
     // ── 高质量 canvas 占位：等矩形投影，海洋+极冠+大陆轮廓 ──────────────
     const pc=document.createElement('canvas');pc.width=1024;pc.height=512;
@@ -1107,9 +1169,9 @@ function Globe3D({onClose}){
     const fill=new THREE.DirectionalLight(0x334488,0.8);fill.position.set(-3,-1,-3);scene.add(fill);
 
     // Drag + zoom
-    let drag=false,lx=0,ly=0,ry=0.3,rx=0.2,camZ=2.5;
+    let drag=false,lx=0,ly=0,ry=0.3,rx=0.2,camZ=2.5,mdx=0,mdy=0;
     const d=renderer.domElement;
-    function dn(e){drag=true;lx=e.clientX;ly=e.clientY;}
+    function dn(e){drag=true;lx=e.clientX;ly=e.clientY;mdx=e.clientX;mdy=e.clientY;}
     function up(){drag=false;}
     function mv(e){if(!drag)return;ry+=(e.clientX-lx)*.005;rx+=(e.clientY-ly)*.005;rx=Math.max(-1.2,Math.min(1.2,rx));lx=e.clientX;ly=e.clientY;}
     function wh(e){camZ+=e.deltaY*0.002;camZ=Math.max(1.3,Math.min(5.0,camZ));camera.position.z=camZ;}
@@ -1120,11 +1182,50 @@ function Globe3D({onClose}){
     d.addEventListener('mousedown',dn);d.addEventListener('mouseup',up);d.addEventListener('mouseleave',up);d.addEventListener('mousemove',mv);
     d.addEventListener('wheel',wh,{passive:true});
     d.addEventListener('touchstart',tp,{passive:true});d.addEventListener('touchmove',tm,{passive:true});
+    // Marker click → fly-to → show building panel
+    const rc2=new THREE.Raycaster();
+    function cl(e){
+      if(Math.abs(e.clientX-mdx)>6||Math.abs(e.clientY-mdy)>6)return;
+      const rect=d.getBoundingClientRect();
+      const mv2=new THREE.Vector2(
+        ((e.clientX-rect.left)/rect.width)*2-1,
+        -((e.clientY-rect.top)/rect.height)*2+1
+      );
+      rc2.setFromCamera(mv2,camera);
+      const hits=rc2.intersectObjects(group.children,false);
+      if(hits.some(h=>h.object.userData.isMarker)){
+        const tRy=-(LNG+90)*Math.PI/180;
+        const tRx=LAT*Math.PI/180;
+        flyRef.current={active:true,targetRy:tRy,targetRx:tRx,onDone:()=>setShowBldg(true)};
+      }
+    }
+    d.addEventListener('click',cl);
 
     let aid;
     function animate(){
       aid=requestAnimationFrame(animate);
       if(!drag)ry+=.0015;
+      // Pulse animation
+      const pt=performance.now()*0.001;
+      pulses.forEach(m=>{
+        const t=((pt*0.8+m.userData.phase)%1+1)%1;
+        m.scale.setScalar(1+t*2.5);
+        m.material.opacity=0.7*(1-t);
+      });
+      // Fly-to 缓动
+      const fly=flyRef.current;
+      if(fly.active){
+        let dRy=fly.targetRy-ry;
+        while(dRy>Math.PI)dRy-=2*Math.PI;
+        while(dRy<-Math.PI)dRy+=2*Math.PI;
+        const dRx=fly.targetRx-rx;
+        ry+=dRy*0.04;rx+=dRx*0.04;
+        if(Math.abs(dRy)<0.005&&Math.abs(dRx)<0.005){
+          ry=fly.targetRy;rx=fly.targetRx;
+          fly.active=false;
+          if(fly.onDone)fly.onDone();
+        }
+      }
       group.rotation.y=ry;group.rotation.x=rx;
       group.children.forEach(c=>{if(c.userData.isCloud)c.rotation.y+=.0002;});
       renderer.render(scene,camera);
@@ -1133,11 +1234,33 @@ function Globe3D({onClose}){
 
     function onR(){const w=el.clientWidth,h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
     window.addEventListener('resize',onR);
-    return()=>{cancelAnimationFrame(aid);window.removeEventListener('resize',onR);d.removeEventListener('mousedown',dn);d.removeEventListener('mouseup',up);d.removeEventListener('mouseleave',up);d.removeEventListener('mousemove',mv);d.removeEventListener('wheel',wh);d.removeEventListener('touchstart',tp);d.removeEventListener('touchmove',tm);renderer.dispose();if(el.contains(d))el.removeChild(d);};
+    return()=>{cancelAnimationFrame(aid);window.removeEventListener('resize',onR);d.removeEventListener('mousedown',dn);d.removeEventListener('mouseup',up);d.removeEventListener('mouseleave',up);d.removeEventListener('mousemove',mv);d.removeEventListener('wheel',wh);d.removeEventListener('touchstart',tp);d.removeEventListener('touchmove',tm);d.removeEventListener('click',cl);renderer.dispose();if(el.contains(d))el.removeChild(d);};
   },[]);
 
   return(
     <div ref={mountRef} style={{position:'fixed',inset:0,zIndex:100,background:'#000005'}}>
+      {showBldg&&(
+        <div style={{position:'absolute',right:0,top:0,width:'62%',height:'100%',
+          background:'rgba(7,9,15,0.96)',zIndex:110,
+          borderLeft:'1px solid rgba(255,255,255,0.08)',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:16,left:20,zIndex:120,
+            color:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:700,letterSpacing:1}}>
+            {'TAR UMT \u00b7 Building Floor View'}
+          </div>
+          <button onClick={()=>setShowBldg(false)}
+            style={{position:'absolute',top:12,right:16,width:34,height:34,zIndex:120,
+              borderRadius:'50%',background:'rgba(255,255,255,0.1)',
+              border:'1px solid rgba(255,255,255,0.18)',color:'#fff',
+              fontSize:17,cursor:'pointer',display:'flex',
+              alignItems:'center',justifyContent:'center'}}>
+            {'\u2715'}
+          </button>
+          <div style={{position:'relative',width:'100%',height:'100%'}}>
+            <Building3D aiOpen={false}/>
+            <FloorSelector panelVisible={false}/>
+          </div>
+        </div>
+      )}
       <div style={{position:'absolute',bottom:20,right:20,zIndex:101,display:'flex',flexDirection:'column',gap:8,alignItems:'center'}}>
         <button onClick={()=>window.open('3dview/viewer.html','_blank')}
           title="3D Building Model"
@@ -1222,8 +1345,8 @@ function MapControls({onToggle3D,onTogglePanel,panelVisible,onRefresh,tab,onTogg
 // 3 cards — each with its own thumbnail image, crop, and modal image
 const VIEW_CARD_DEFS=[
   {src:'rd/view1.png', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/chiller-plant.html'},
-  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/ntimg01.png'},
-  {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ntimg.png'},
+  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/chiller_plant_diagram.html'},
+  {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ahu-view.html'},
 ];
 function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
   const [hover,setHover]=useState(false);
@@ -1253,9 +1376,9 @@ function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
 }
 /* ── View Modal ── */
 const VIEW_OPTIONS=[
-  {label:'Chiller Plant',  src:'rd/chiller-plant.html'},
-  {label:'HVAC System',    src:'rd/ntimg01.png'},
-  {label:'Chiller Room 3D',src:'rd/ntimg.png'},
+  {label:'Chiller Plant',     src:'rd/chiller-plant.html'},
+  {label:'Chiller Diagram',   src:'rd/chiller_plant_diagram.html'},
+  {label:'AHU System',        src:'rd/ahu-view.html'},
 ];
 function ViewModal({onClose,img}){
   const [current,setCurrent]=useState(img);
