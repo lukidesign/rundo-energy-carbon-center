@@ -128,16 +128,39 @@ let _earthTexCache=null;
   );
 })();
 
+/* ══════════════════ ENERGY BASE (单一数据源) ═══════════════════ */
+// 2025年全年实际用电量 → 驱动所有衍生数据（楼层、日/周/月/年卡片、图表）
+const YEARLY_2025  = 1423500;                        // kWh — 2025全年实际
+const DAILY_RATE   = Math.round(YEARLY_2025 / 365);  // 3,900 kWh/日
+const OPT_RATIO    = 0.75;                           // AI节能25%
+const TODAY_YTD    = 105;  // 2026年1月1日至4月15日：31+28+31+15=105天
+const MONTHLY_DAYS = 15;   // 4月1日至4月15日
+
+// 建筑级累计用电（以4月15日为基准）
+const E = {
+  daily  : DAILY_RATE,                      // 3,900 kWh
+  weekly : DAILY_RATE * 7,                  // 27,300 kWh
+  monthly: DAILY_RATE * MONTHLY_DAYS,       // 58,500 kWh
+  yearly : DAILY_RATE * TODAY_YTD,          // 409,500 kWh
+};
+
 /* ══════════════════ MOCK DATA ══════════════════════════════════ */
-const FLOORS=[
-  {id:7,label:'7F',consumption:180,optimized:135,hl:false},
-  {id:6,label:'6F',consumption:210,optimized:158,hl:false},
-  {id:5,label:'5F',consumption:245,optimized:184,hl:false},
-  {id:4,label:'4F',consumption:332,optimized:204,hl:false},
-  {id:3,label:'3F',consumption:198,optimized:149,hl:false},
-  {id:2,label:'2F',consumption:172,optimized:129,hl:true },
-  {id:1,label:'1F',consumption:152,optimized:116,hl:false},
+// 楼层权重（保持原始比例，总和自动缩放至 DAILY_RATE）
+const _FW=[
+  {id:7,label:'7F',w:180,hl:false},
+  {id:6,label:'6F',w:210,hl:false},
+  {id:5,label:'5F',w:245,hl:false},
+  {id:4,label:'4F',w:332,hl:false},
+  {id:3,label:'3F',w:198,hl:false},
+  {id:2,label:'2F',w:172,hl:true },
+  {id:1,label:'1F',w:152,hl:false},
 ];
+const _WS=_FW.reduce((s,f)=>s+f.w,0); // 1,489
+const FLOORS=_FW.map(f=>{
+  const c=Math.round(E.daily*f.w/_WS);
+  return{id:f.id,label:f.label,consumption:c,optimized:Math.round(c*OPT_RATIO),hl:f.hl};
+});
+// 7F:470  6F:550  5F:642  4F:870  3F:519  2F:451  1F:398  ∑=3,900
 const ZONES=[
   {id:'A',label:'Zone A',name:'Office (North Wing)',   floor:1,consumption:290,optimized:218},
   {id:'B',label:'Zone B',name:'Medical (East Wing)',   floor:2,consumption:340,optimized:255},
@@ -147,8 +170,8 @@ const ZONES=[
   {id:'G',label:'Zone G',name:'Lab (East)',            floor:6,consumption:310,optimized:233},
 ];
 const BAR=[
-  {t:'06:00',c:144,o:220},{t:'',c:220,o:284},{t:'12:00',c:190,o:346},{t:'',c:151,o:262},
-  {t:'18:00',c:168,o:272},{t:'',c:199,o:291},{t:'',c:96,o:168},{t:'Now',c:80,o:120},
+  {t:'06:00',c:337,o:437},{t:'',c:515,o:564},{t:'12:00',c:445,o:687},{t:'',c:354,o:520},
+  {t:'18:00',c:394,o:540},{t:'',c:466,o:578},{t:'',c:225,o:334},{t:'Now',c:187,o:238},
 ];
 const SAVINGS=[
   {d:'1 Dec', cost:6580,  en:900},
@@ -555,9 +578,9 @@ function EnergyChart(){
         scales:{
           x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}},border:{display:false}},
           y:{
-            max:400,
+            max:750,
             grid:{color:'rgba(255,255,255,.07)',borderDash:[3,3]},
-            ticks:{color:'#94a3b8',font:{size:10},stepSize:100},
+            ticks:{color:'#94a3b8',font:{size:10},stepSize:200},
             border:{display:false},
           },
         },
@@ -622,14 +645,12 @@ function Card({label,cur,opt,unit,delay=0}){
   );
 }
 function StatsCards(){
-  const {floors}=useE();
-  const daily=floors.find(f=>f.id===14)?.live||332;
   return(
     <div className="pa3" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-      <Card label="Daily consumption" cur={daily} opt={204} unit="kWh" delay={2000}/>
-      <Card label="Weekly consumption" cur={1437} opt={1204} unit="kWh" delay={2050}/>
-      <Card label="Monthly consumption" cur={10400} opt={8100} unit="kWh" delay={2100}/>
-      <Card label="Yearly consumption" cur={154300} opt={125200} unit="kWh" delay={2150}/>
+      <Card label="Daily consumption"   cur={E.daily}   opt={Math.round(E.daily*OPT_RATIO)}   unit="kWh" delay={2000}/>
+      <Card label="Weekly consumption"  cur={E.weekly}  opt={Math.round(E.weekly*OPT_RATIO)}  unit="kWh" delay={2050}/>
+      <Card label="Monthly consumption" cur={E.monthly} opt={Math.round(E.monthly*OPT_RATIO)} unit="kWh" delay={2100}/>
+      <Card label="Yearly consumption"  cur={E.yearly}  opt={Math.round(E.yearly*OPT_RATIO)}  unit="kWh" delay={2150}/>
     </div>
   );
 }
