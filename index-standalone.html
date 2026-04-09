@@ -726,6 +726,12 @@ function SavingsChart(){
   const ref=useRef(null);
   useEffect(()=>{
     if(!ref.current) return;
+    // ── 动态 Y 轴：根据 cost 最大值自动均分 5 格 ──────────────────
+    const _maxCost = Math.max(...SAVINGS.map(d=>d.cost));
+    const _mag     = Math.pow(10, Math.floor(Math.log10(_maxCost)));
+    const _niceMax = Math.ceil(_maxCost / _mag) * _mag;   // 向上取整到最近数量级
+    const _step    = _niceMax / 5;                         // 均分 5 格
+    const _sTicks  = Array.from({length:6},(_,i)=>({value:i*_step}));
     const ch=new Chart(ref.current.getContext('2d'),{
       type:'line',
       plugins:[lineDrawPlugin,crosshairPlugin],
@@ -768,11 +774,11 @@ function SavingsChart(){
             border:{display:false},
           },
           y:{
-            min:0,max:10000,
+            min:0, max:_niceMax,
             grid:{color:'rgba(255,255,255,.06)',borderDash:[3,3]},
-            ticks:{color:'#94a3b8',font:{size:10},callback:v=>v>=1000?(v/1000)+'k':v},
+            ticks:{color:'#94a3b8',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},
             border:{display:false},
-            afterBuildTicks:scale=>{scale.ticks=[0,2000,4000,10000].map(v=>({value:v}));},
+            afterBuildTicks:scale=>{scale.ticks=_sTicks;},
           },
         },
       },
