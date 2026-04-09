@@ -1363,10 +1363,24 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
   },[zBFloor]);
   return(
     <div style={{position:'absolute',inset:0}}>
-      <div style={{position:'absolute',top:16,left:'50%',transform:`translateX(-50%) translateY(${tabBarVisible?0:-60}px)`,opacity:tabBarVisible?1:0,pointerEvents:tabBarVisible?'auto':'none',display:'flex',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',borderRadius:100,padding:'2px',width:480,transition:'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .35s'}}>
+      <div style={{position:'absolute',top:16,left:'50%',transform:`translateX(-50%) translateY(${tabBarVisible?0:-60}px)`,opacity:tabBarVisible?1:0,pointerEvents:tabBarVisible?'auto':'none',display:'flex',alignItems:'center',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',borderRadius:100,padding:'2px 6px 2px 2px',width:660,transition:'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .35s'}}>
         {['Campus','Building','Floor'].map(t=>{const a=t===tab;return(
           <button key={t} onClick={()=>{setTab(t);setBearingVisible(false);onRefresh&&onRefresh();}} style={{flex:1,padding:'5px 16px',borderRadius:100,fontSize:16,fontWeight:a?700:400,color:a?'#fff':'rgba(255,255,255,0.85)',background:a?'#16171a':'transparent',border:'none',cursor:'pointer',transition:'all .15s'}}>{t}</button>
         );})}
+        {/* Zone divider + selector */}
+        <div style={{width:1,height:20,background:'rgba(255,255,255,0.15)',flexShrink:0,margin:'0 6px'}}/>
+        <select
+          value={zZone}
+          onChange={e=>setZZone(e.target.value)}
+          style={{flex:'0 0 165px',padding:'5px 12px',borderRadius:100,fontSize:13,fontWeight:500,
+            color:'rgba(255,255,255,0.85)',background:'rgba(255,255,255,0.07)',
+            border:'1px solid rgba(255,255,255,0.15)',cursor:'pointer',outline:'none'}}>
+          {ZONES.map(z=>(
+            <option key={z.id} value={z.id} style={{background:'#0d1829',color:'#e2e8f0'}}>
+              {z.label + ' - ' + z.name}
+            </option>
+          ))}
+        </select>
       </div>
       {/* Tab bar toggle button — top right, left of app icon */}
       <button title={tabBarVisible?'隐藏导航栏':'显示导航栏'} onClick={()=>setTabBarVisible(v=>!v)}
