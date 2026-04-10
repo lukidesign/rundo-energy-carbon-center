@@ -824,161 +824,35 @@ function SavingsChart(){
 
 /* ══════════════════ 3D BUILDING ═════════════════════════════════ */
 function Building3D({aiOpen=false}){
-  const mountRef=useRef(null);
-  const stRef=useRef({active:14,floors:FLOORS.map(f=>({...f,live:f.consumption,alert:false}))});
-  const tipRef=useRef(null);
-  const aiOpenRef=useRef(aiOpen);
-  const {setActive:setCtxActive,floors:ctxFloors,active:ctxActive}=useE();
-
-  useEffect(()=>{aiOpenRef.current=aiOpen;},[aiOpen]);
-  useEffect(()=>{stRef.current.floors=ctxFloors;stRef.current.active=ctxActive;},[ctxFloors,ctxActive]);
-
-  useEffect(()=>{
-    const el=mountRef.current;
-    if(!el) return;
-    const W=el.clientWidth,H=el.clientHeight;
-
-    const scene=new THREE.Scene();
-    scene.fog=new THREE.FogExp2(0x070d1a,0.035);
-
-    const camera=new THREE.PerspectiveCamera(42,W/H,0.1,200);
-    camera.position.set(12,8,12);
-    camera.lookAt(0,2,0);
-
-    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-    renderer.setSize(W,H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    el.appendChild(renderer.domElement);
-
-    // Lights — bright white-blue holographic matching reference
-    scene.add(new THREE.AmbientLight(0xc8e0ff,7));
-    const dl=new THREE.DirectionalLight(0xffffff,5);dl.position.set(5,14,5);scene.add(dl);
-    const dl2=new THREE.DirectionalLight(0xddeeff,3);dl2.position.set(-5,10,-3);scene.add(dl2);
-    const pl=new THREE.PointLight(0x88bbff,12,28);pl.position.set(0,8,0);scene.add(pl);
-    const gl=new THREE.PointLight(0x22c55e,6,16);gl.position.set(0,3,0);scene.add(gl);
-    const rim=new THREE.PointLight(0xffffff,5,20);rim.position.set(-6,6,-4);scene.add(rim);
-
-    // OrbitControls
-    const ctrl=new THREE.OrbitControls(camera,renderer.domElement);
-    ctrl.enablePan=false;ctrl.minPolarAngle=Math.PI/6;ctrl.maxPolarAngle=Math.PI/2.1;
-    ctrl.minDistance=10;ctrl.maxDistance=28;ctrl.target.set(0,2,0);ctrl.update();
-
-    // Floors — holographic translucent panels with edge grid lines
-    const FH=0.55,FG=0.06,FW=4.2,FD=2.8;
-    const meshes=[];
-    FLOORS.forEach((f,i)=>{
-      const mat=new THREE.MeshStandardMaterial({
-        color:0x0d1e3a,
-        emissive:0x1a3a6e,
-        emissiveIntensity:0.6,
-        transparent:true,opacity:0.88,
-        roughness:0.15,metalness:0.45,
-      });
-      const geo=new THREE.BoxGeometry(FW,FH,FD);
-      const mesh=new THREE.Mesh(geo,mat);
-      mesh.position.set(0,(f.id-1)*(FH+FG)+FH/2,0);
-      mesh.userData={id:f.id,hl:f.hl};
-      scene.add(mesh);meshes.push(mesh);
-      // Edge lines — window grid effect
-      const edges=new THREE.LineSegments(
-        new THREE.EdgesGeometry(geo),
-        new THREE.LineBasicMaterial({color:0x2255aa,transparent:true,opacity:0.7})
-      );
-      edges.position.set(0,(f.id-1)*(FH+FG)+FH/2,0);
-      scene.add(edges);
-    });
-
-    // Base
-    const bm=new THREE.MeshStandardMaterial({color:0x060f1e,metalness:.5,roughness:.4});
-    const ob=new THREE.MeshStandardMaterial({color:0x040a14,metalness:.6,roughness:.5});
-    const b1=new THREE.Mesh(new THREE.BoxGeometry(5.5,.3,3.8),bm);b1.position.y=-.15;scene.add(b1);
-    const b2=new THREE.Mesh(new THREE.BoxGeometry(7,.1,5.5),ob);b2.position.y=-.32;scene.add(b2);
-    const grid=new THREE.GridHelper(8,20,0x112244,0x0d1a33);grid.position.y=-.27;scene.add(grid);
-
-    // Scan rings
-    const rm1=new THREE.MeshBasicMaterial({color:0x4d8af0,transparent:true,opacity:.35,side:THREE.DoubleSide});
-    const rm2=new THREE.MeshBasicMaterial({color:0x4d8af0,transparent:true,opacity:.15,side:THREE.DoubleSide});
-    const r1=new THREE.Mesh(new THREE.RingGeometry(2.2,2.5,64),rm1);r1.rotation.x=-Math.PI/2;r1.position.y=-.02;scene.add(r1);
-    const r2=new THREE.Mesh(new THREE.RingGeometry(3.0,3.2,64),rm2);r2.rotation.x=-Math.PI/2;r2.position.y=-.02;scene.add(r2);
-
-    // Raycaster
-    const rc=new THREE.Raycaster();const mouse=new THREE.Vector2();
-    let hovId=null;
-    function onMove(e){
-      const rect=renderer.domElement.getBoundingClientRect();
-      mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
-      mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
-      rc.setFromCamera(mouse,camera);
-      const hits=rc.intersectObjects(meshes);
-      if(hits.length){
-        const id=hits[0].object.userData.id;
-        if(id!==hovId){hovId=id;setCtxActive(id);stRef.current.active=id;renderer.domElement.style.cursor='pointer';}
-      }else{hovId=null;renderer.domElement.style.cursor='default';}
-    }
-    renderer.domElement.addEventListener('mousemove',onMove);
-
-    // Animate
-    let aid;
-    function animate(){
-      aid=requestAnimationFrame(animate);
-      const t=Date.now()*.001;
-      const {active,floors}=stRef.current;
-      meshes.forEach(m=>{
-        const f=floors.find(x=>x.id===m.userData.id);
-        const mat=m.material;
-        if(f?.alert){mat.emissive.setHex(0xef4444);mat.emissiveIntensity=1.2+Math.sin(t*5)*.8;}
-        else if(m.userData.id===active){mat.emissive.setHex(0x22c55e);mat.color.setHex(0x0a3a14);mat.emissiveIntensity=2.0+Math.sin(t*2)*.4;mat.opacity=0.95;}
-        else{mat.emissive.setHex(0x1a3a6e);mat.color.setHex(0x0d1e3a);mat.emissiveIntensity=Math.max(mat.emissiveIntensity-.06,0.5);mat.opacity=0.88;}
-      });
-      r1.rotation.z=t*.5;r2.rotation.z=-t*.3;
-      rm1.opacity=.25+Math.sin(t*1.5)*.12;rm2.opacity=(.25+Math.sin(t*1.5)*.12)*.5;
-
-      // Tooltip positioning
-      if(tipRef.current){
-        const {active:af}=stRef.current;
-        const idx=FLOORS.findIndex(f=>f.id===af);
-        if(idx>=0){
-          const pos=new THREE.Vector3(-2,(af-1)*(FH+FG)+FH/2+.4,2);
-          pos.project(camera);
-          const rect=renderer.domElement.getBoundingClientRect();
-          const tx=(pos.x*.5+.5)*rect.width;
-          const ty=(-pos.y*.5+.5)*rect.height;
-          tipRef.current.style.left=`${Math.max(10,Math.min(tx+15,rect.width-200))}px`;
-          tipRef.current.style.top=`${Math.max(10,Math.min(ty-70,rect.height-140))}px`;
-          tipRef.current.style.display='block';
-        }
-      }
-      // Smoothly center building in available area
-      // Left panel=400px always, AI panel=360px when open → offset=(leftW-rightW)/2
-      const targetOff=aiOpenRef.current?-20:-200;
-      curOff+=(targetOff-curOff)*0.08;
-      camera.setViewOffset(renderer.domElement.width,renderer.domElement.height,curOff,0,renderer.domElement.width,renderer.domElement.height);
-
-      ctrl.update();renderer.render(scene,camera);
-    }
-    let curOff=-200;
-    animate();
-
-    function onResize(){
-      const w=el.clientWidth,h=el.clientHeight;
-      camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
-    }
-    window.addEventListener('resize',onResize);
-    return()=>{
-      cancelAnimationFrame(aid);window.removeEventListener('resize',onResize);
-      renderer.domElement.removeEventListener('mousemove',onMove);
-      renderer.dispose();if(el.contains(renderer.domElement))el.removeChild(renderer.domElement);
-    };
-  },[]);
-
-  const {floors,active}=useE();
+  const {floors,active,setActive}=useE();
   const af=floors.find(f=>f.id===active);
   const sp=af?Math.max(0,Math.round((1-af.optimized/af.live)*100)):25;
 
   return(
-    <div ref={mountRef} style={{width:'100%',height:'100%',position:'relative'}}>
-      <div ref={tipRef} style={{position:'absolute',display:'none',pointerEvents:'none',zIndex:20,background:'rgba(10,20,40,.95)',border:'1px solid rgba(255,255,255,.12)',borderRadius:10,padding:'12px 14px',minWidth:180,boxShadow:'0 8px 32px rgba(0,0,0,.5)'}}>
-        {af&&<>
+    <div style={{width:'100%',height:'100%',position:'relative',overflow:'hidden',background:'#07090f'}}>
+      {/* SVG floor plan — fills the view */}
+      <img
+        src="rd/floor-plan.svg"
+        alt="Floor Plan"
+        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',userSelect:'none',pointerEvents:'none'}}
+      />
+      {/* Floor label badge — top left */}
+      {af&&(
+        <div style={{position:'absolute',top:20,left:'calc(50% - 80px)',zIndex:20,
+          background:'rgba(0,229,160,0.12)',border:'1px solid rgba(0,229,160,0.35)',
+          borderRadius:100,padding:'4px 18px',
+          color:'#00e5a0',fontSize:15,fontWeight:700,letterSpacing:1,
+          display:'flex',alignItems:'center',gap:8}}>
+          <span>{af.label}</span>
+          <span style={{width:6,height:6,borderRadius:'50%',background:'#00e5a0',display:'inline-block',boxShadow:'0 0 6px #00e5a0'}}/>
+        </div>
+      )}
+      {/* Tooltip — consumption data */}
+      {af&&(
+        <div style={{position:'absolute',left:480,top:'50%',transform:'translateY(-50%)',zIndex:20,
+          background:'rgba(10,20,40,.95)',border:'1px solid rgba(255,255,255,.12)',
+          borderRadius:10,padding:'12px 14px',minWidth:180,
+          boxShadow:'0 8px 32px rgba(0,0,0,.5)',pointerEvents:'none'}}>
           <p style={{fontSize:14,fontWeight:700,marginBottom:8}}>{af.label}</p>
           <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>Current consumption</p>
           <p style={{fontSize:16,fontWeight:700,marginBottom:8}}>{af.live} <span style={{fontSize:11,fontWeight:400}}>kWh</span></p>
@@ -987,8 +861,8 @@ function Building3D({aiOpen=false}){
             <span style={{fontSize:15,fontWeight:700,color:'var(--primary)'}}>{af.optimized} <span style={{fontSize:11,fontWeight:400,color:'var(--primary)'}}>kWh</span></span>
             <span className="badge-green">+{sp}% <span className="dot"/></span>
           </div>
-        </>}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

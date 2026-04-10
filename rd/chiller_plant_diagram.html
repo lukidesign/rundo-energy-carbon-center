@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0f1e; font-family: "Anthropic Sans", sans-serif; padding: 24px; min-height: 100vh; }
+
+.title { color: #8899bb; font-size: 12px; letter-spacing: 1px; margin-bottom: 20px; }
+
+.main-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Pipe lines */
+.pipe {
+  height: 3px;
+  flex: 1;
+  min-width: 20px;
+  position: relative;
+}
+.pipe-chw { background: #1e88e5; }
+.pipe-chw-ret { background: #42a5c2; }
+.pipe-cw { background: #e5841e; }
+.pipe-cw-ret { background: #c24242; }
+
+.pipe::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+}
+
+/* Node cards */
+.node-card {
+  background: #111827;
+  border: 1.5px solid #1e3a5f;
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.node-card:hover { border-color: #3a7bc8; background: #141e30; }
+
+.node-card.circle {
+  border-radius: 50%;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.node-card.chiller {
+  border-color: #1a5c3a;
+  background: #0d1f16;
+  min-width: 180px;
+}
+.node-card.chiller:hover { border-color: #2e9a62; }
+
+.node-card.cooling-tower {
+  border-top: 3px solid #e5841e;
+  min-width: 130px;
+}
+
+.node-card .node-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #c8d8f0;
+  margin-bottom: 2px;
+}
+
+.node-card .node-sub {
+  font-size: 11px;
+  color: #5577aa;
+  margin-bottom: 6px;
+}
+
+.node-card .node-value {
+  font-size: 20px;
+  font-weight: 500;
+  color: #4caf7d;
+  margin: 4px 0;
+}
+
+.node-card .node-metric {
+  font-size: 11px;
+  color: #8899bb;
+}
+
+.node-card .node-status {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #1a3a55;
+  color: #4a90d9;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.node-card .node-status.warn {
+  background: #3a2200;
+  color: #e5a020;
+}
+
+.badge {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0a0f1e;
+  border: 1px solid #2a4a6f;
+  border-radius: 6px;
+  font-size: 10px;
+  color: #5577aa;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* Full layout */
+.diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  position: relative;
+}
+
+/* Top: cooling side (condenser) */
+.cw-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding-bottom: 0;
+}
+
+/* Middle: chillers */
+.chiller-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* Bottom: CHW side (evaporator) */
+.chw-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* Temperature labels on pipes */
+.temp-label {
+  font-size: 11px;
+  color: #8899bb;
+  position: absolute;
+  white-space: nowrap;
+  background: #0a0f1e;
+  padding: 0 4px;
+}
+
+/* SVG diagram container */
+.svg-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Metric row inside chiller card */
+.metrics {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.metric-item { text-align: center; }
+.metric-val { font-size: 16px; font-weight: 500; color: #4caf7d; }
+.metric-lbl { font-size: 10px; color: #5577aa; }
+
+/* Dot indicator */
+.dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4caf7d;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.dot.warn { background: #e5a020; }
+
+/* Chiller row layout */
+.chiller-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+  margin: 6px 0;
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #3a5a8a;
+  text-align: center;
+  padding: 4px 0;
+  border-top: 1px solid #1a2a3f;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="title">CHILLER PLANT — SYSTEM OVERVIEW</div>
+
+<div class="svg-container">
+<svg width="100%" viewBox="0 0 860 620" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+<defs>
+  <marker id="arr-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#1e88e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#42a5c2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#e5841e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#c24242" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-blue-rev" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M8 1L2 5L8 9" fill="none" stroke="#1e88e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- ═══════════════════════ COOLING TOWER (top right) ═══════════════════════ -->
+<g style="cursor:pointer" onclick="showDetail('Cooling Tower','28.4°C inlet','35.2°C outlet','Rejecting heat to atmosphere')">
+  <!-- tower trapezoid -->
+  <path d="M670 30 L730 30 L750 80 L650 80 Z" fill="#1a2030" stroke="#e5841e" stroke-width="1.5"/>
+  <!-- fan blades hint -->
+  <line x1="700" y1="45" x2="700" y2="65" stroke="#e5841e" stroke-width="1" stroke-dasharray="3 2"/>
+  <line x1="685" y1="55" x2="715" y2="55" stroke="#e5841e" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="700" y="100" text-anchor="middle" font-size="11" fill="#8899bb">Cooling Tower</text>
+  <text x="700" y="113" text-anchor="middle" font-size="10" fill="#5577aa">28.4°C</text>
+</g>
+
+<!-- ═══════════════════════ CW PUMP (condenser pump, right) ═══════════════════════ -->
+<g style="cursor:pointer" onclick="showDetail('CW Pump','42 Hz','Condenser water circulation','Serving all 4 chillers')">
+  <circle cx="780" cy="290" r="38" fill="#1a2030" stroke="#e5841e" stroke-width="1.5"/>
+  <text x="780" y="287" text-anchor="middle" font-size="12" font-weight="500" fill="#c8d8f0">CW Pump</text>
+  <text x="780" y="303" text-anchor="middle" font-size="13" font-weight="500" fill="#e5a020">42 Hz</text>
+</g>
+
+<!-- CW supply (hot, amber): CW pump → right side of chillers (condenser in) -->
+<!-- Vertical pipe from cooling tower down to CW pump -->
+<line x1="700" y1="80" x2="700" y2="252" stroke="#e5841e" stroke-width="2.5"/>
+<line x1="700" y1="252" x2="780" y2="252" stroke="#e5841e" stroke-width="2.5" marker-end="url(#arr-amber)"/>
+<!-- temp label -->
+<text x="728" y="245" font-size="10" fill="#e5a020">35.2°C</text>
+
+<!-- CW return (cool, red): from chillers left condenser out → up to cooling tower -->
+<line x1="660" y1="252" x2="660" y2="30" stroke="#c24242" stroke-width="2.5" stroke-dasharray="6 3"/>
+<text x="632" y="200" font-size="10" fill="#c24242" transform="rotate(-90,632,200)">CW Return  30.1°C</text>
+
+<!-- CW pump → down to chillers (right vertical trunk) -->
+<line x1="780" y1="328" x2="780" y2="540" stroke="#e5841e" stroke-width="2.5"/>
+
+<!-- ═══════════════════════ CHW PUMP (evaporator, left) ═══════════════════════ -->
+<g style="cursor:pointer" onclick="showDetail('CHW Pump','45 Hz','Chilled water circulation','To terminals / AHUs')">
+  <circle cx="80" cy="290" r="38" fill="#1a2030" stroke="#1e88e5" stroke-width="1.5"/>
+  <text x="80" y="287" text-anchor="middle" font-size="12" font-weight="500" fill="#c8d8f0">CHW Pump</text>
+  <text x="80" y="303" text-anchor="middle" font-size="13" font-weight="500" fill="#4a9ee5">45 Hz</text>
+</g>
+
+<!-- CHW supply (cold, blue dashed): pump → left side of chillers (evaporator in) -->
+<line x1="118" y1="275" x2="200" y2="275" stroke="#1e88e5" stroke-width="2.5" stroke-dasharray="6 3" marker-end="url(#arr-blue)"/>
+<text x="150" y="267" font-size="10" fill="#4a9ee5">14.2°C</text>
+
+<!-- CHW return (blue): from chillers → pump -->
+<line x1="200" y1="305" x2="118" y2="305" stroke="#42a5c2" stroke-width="2.5" marker-end="url(#arr-teal)"/>
+<text x="150" y="320" font-size="10" fill="#42a5c2">12.8°C</text>
+
+<!-- To terminals arrow (down from pump) -->
+<line x1="80" y1="328" x2="80" y2="380" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+<rect x="40" y="380" width="80" height="26" rx="6" fill="#111827" stroke="#1e3a5f" stroke-width="1"/>
+<text x="80" y="397" text-anchor="middle" font-size="10" fill="#5577aa">To Terminals</text>
+
+<!-- CHW vertical trunk left (blue) -->
+<line x1="200" y1="250" x2="200" y2="540" stroke="#1e88e5" stroke-width="2.5" stroke-dasharray="6 3"/>
+<!-- CHW return vertical trunk -->
+<line x1="230" y1="250" x2="230" y2="540" stroke="#42a5c2" stroke-width="2.5"/>
+
+<!-- CW trunks horizontal connections to each chiller (4 chillers) -->
+
+<!-- ═══════════════════════ CHILLER ROWS ═══════════════════════ -->
+
+<!-- Helper: chiller at y position -->
+<!-- CH-1 at y=140 -->
+<!-- CH-2 at y=260 (highlighted) -->
+<!-- CH-3 at y=380 -->
+<!-- CH-4 at y=500 -->
+
+<!-- CH-1 ─────────────────────────────────────── -->
+<g style="cursor:pointer" onclick="showDetail('CH-1 (特灵)','95 kW','COP 4.1  87%','Evap: 14.2→12.8°C  Cond: 30.1→35.2°C')">
+  <rect x="280" y="120" width="330" height="68" rx="10" fill="#0d1f16" stroke="#1a5c3a" stroke-width="1.5"/>
+  <text x="310" y="142" font-size="11" font-weight="500" fill="#8abfa0">CH-1</text>
+  <text x="310" y="157" font-size="10" fill="#4a7a60">特灵 Trane</text>
+  <!-- value -->
+  <text x="445" y="145" text-anchor="middle" font-size="22" font-weight="500" fill="#4caf7d">95</text>
+  <text x="470" y="145" font-size="12" fill="#4a7a60">kW</text>
+  <!-- metrics -->
+  <text x="310" y="178" font-size="10" fill="#4a7a60">COP 4.1</text>
+  <text x="365" y="178" font-size="10" fill="#4a7a60">87%</text>
+  <!-- status dot -->
+  <circle cx="570" cy="150" r="4" fill="#4caf7d"/>
+  <text x="580" y="154" font-size="10" fill="#4a7a60">运行</text>
+</g>
+<!-- CHW connections CH-1 -->
+<line x1="200" y1="154" x2="280" y2="154" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#arr-blue)"/>
+<line x1="280" y1="170" x2="230" y2="170" stroke="#42a5c2" stroke-width="2" marker-end="url(#arr-teal)"/>
+<!-- CW connections CH-1 -->
+<line x1="610" y1="154" x2="660" y2="154" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="660" y1="154" x2="780" y2="154" stroke="#e5841e" stroke-width="2" marker-end="url(#arr-amber)"/>
+<!-- Valve dots -->
+<circle cx="265" cy="154" r="5" fill="#1a2030" stroke="#1e88e5" stroke-width="1.5"/>
+<circle cx="625" cy="154" r="5" fill="#1a2030" stroke="#c24242" stroke-width="1.5"/>
+
+<!-- CH-2 (highlighted) ─────────────────────────────────────── -->
+<g style="cursor:pointer" onclick="showDetail('CH-2 (特灵)','125 kW','COP 3.8  90%','Outlet temperature above target')">
+  <rect x="280" y="256" width="330" height="68" rx="10" fill="#0d1825" stroke="#3a7bc8" stroke-width="2"/>
+  <!-- highlight glow border effect using outer rect -->
+  <rect x="280" y="256" width="330" height="68" rx="10" fill="none" stroke="#1e5099" stroke-width="3" opacity="0.3"/>
+  <text x="310" y="278" font-size="11" font-weight="500" fill="#90b8e8">CH-2</text>
+  <text x="310" y="293" font-size="10" fill="#4a7aaa">特灵 Trane</text>
+  <text x="445" y="281" text-anchor="middle" font-size="22" font-weight="500" fill="#4caf7d">125</text>
+  <text x="471" y="281" font-size="12" fill="#4a7aaa">kW</text>
+  <text x="310" y="314" font-size="10" fill="#4a7aaa">COP 3.8</text>
+  <text x="365" y="314" font-size="10" fill="#4a7aaa">90%</text>
+  <!-- warning status -->
+  <rect x="440" y="303" width="156" height="18" rx="4" fill="#2a1800" stroke="#3a2800" stroke-width="0.5"/>
+  <text x="518" y="315" text-anchor="middle" font-size="9" fill="#e5a020">Outlet temp above target</text>
+  <circle cx="570" cy="286" r="4" fill="#e5a020"/>
+  <text x="580" y="290" font-size="10" fill="#e5a020">告警</text>
+</g>
+<line x1="200" y1="290" x2="280" y2="290" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#arr-blue)"/>
+<line x1="280" y1="306" x2="230" y2="306" stroke="#42a5c2" stroke-width="2" marker-end="url(#arr-teal)"/>
+<line x1="610" y1="290" x2="660" y2="290" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="660" y1="290" x2="780" y2="290" stroke="#e5841e" stroke-width="2" marker-end="url(#arr-amber)"/>
+<circle cx="265" cy="290" r="5" fill="#1a2030" stroke="#1e88e5" stroke-width="1.5"/>
+<circle cx="625" cy="290" r="5" fill="#1a2030" stroke="#c24242" stroke-width="1.5"/>
+
+<!-- CH-3 ─────────────────────────────────────── -->
+<g style="cursor:pointer" onclick="showDetail('CH-3 (格力)','110 kW','COP 4.0  85%','Evap: 14.2→12.8°C  Cond: 30.1→35.2°C')">
+  <rect x="280" y="392" width="330" height="68" rx="10" fill="#0d1f16" stroke="#1a5c3a" stroke-width="1.5"/>
+  <text x="310" y="414" font-size="11" font-weight="500" fill="#8abfa0">CH-3</text>
+  <text x="310" y="429" font-size="10" fill="#4a7a60">格力 Gree</text>
+  <text x="445" y="417" text-anchor="middle" font-size="22" font-weight="500" fill="#4caf7d">110</text>
+  <text x="471" y="417" font-size="12" fill="#4a7a60">kW</text>
+  <text x="310" y="450" font-size="10" fill="#4a7a60">COP 4.0</text>
+  <text x="365" y="450" font-size="10" fill="#4a7a60">85%</text>
+  <circle cx="570" cy="422" r="4" fill="#4caf7d"/>
+  <text x="580" y="426" font-size="10" fill="#4a7a60">运行</text>
+</g>
+<line x1="200" y1="426" x2="280" y2="426" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#arr-blue)"/>
+<line x1="280" y1="442" x2="230" y2="442" stroke="#42a5c2" stroke-width="2" marker-end="url(#arr-teal)"/>
+<line x1="610" y1="426" x2="660" y2="426" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="660" y1="426" x2="780" y2="426" stroke="#e5841e" stroke-width="2" marker-end="url(#arr-amber)"/>
+<circle cx="265" cy="426" r="5" fill="#1a2030" stroke="#1e88e5" stroke-width="1.5"/>
+<circle cx="625" cy="426" r="5" fill="#1a2030" stroke="#c24242" stroke-width="1.5"/>
+
+<!-- CH-4 ─────────────────────────────────────── -->
+<g style="cursor:pointer" onclick="showDetail('CH-4 (格力)','98 kW','COP 3.9  82%','Evap: 14.2→12.8°C  Cond: 30.1→35.2°C')">
+  <rect x="280" y="508" width="330" height="68" rx="10" fill="#0d1f16" stroke="#1a5c3a" stroke-width="1.5"/>
+  <text x="310" y="530" font-size="11" font-weight="500" fill="#8abfa0">CH-4</text>
+  <text x="310" y="545" font-size="10" fill="#4a7a60">格力 Gree</text>
+  <text x="445" y="533" text-anchor="middle" font-size="22" font-weight="500" fill="#4caf7d">98</text>
+  <text x="471" y="533" font-size="12" fill="#4a7a60">kW</text>
+  <text x="310" y="566" font-size="10" fill="#4a7a60">COP 3.9</text>
+  <text x="365" y="566" font-size="10" fill="#4a7a60">82%</text>
+  <circle cx="570" cy="538" r="4" fill="#4caf7d"/>
+  <text x="580" y="542" font-size="10" fill="#4a7a60">运行</text>
+</g>
+<line x1="200" y1="542" x2="280" y2="542" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#arr-blue)"/>
+<line x1="280" y1="558" x2="230" y2="558" stroke="#42a5c2" stroke-width="2" marker-end="url(#arr-teal)"/>
+<line x1="610" y1="542" x2="660" y2="542" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="660" y1="542" x2="780" y2="542" stroke="#e5841e" stroke-width="2" marker-end="url(#arr-amber)"/>
+<circle cx="265" cy="542" r="5" fill="#1a2030" stroke="#1e88e5" stroke-width="1.5"/>
+<circle cx="625" cy="542" r="5" fill="#1a2030" stroke="#c24242" stroke-width="1.5"/>
+
+<!-- CHW trunk bottom cap -->
+<line x1="200" y1="540" x2="200" y2="580" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="230" y1="560" x2="230" y2="580" stroke="#42a5c2" stroke-width="2"/>
+<line x1="200" y1="580" x2="230" y2="580" stroke="#3a6a88" stroke-width="2"/>
+
+<!-- CW trunk bottom cap -->
+<line x1="780" y1="542" x2="780" y2="580" stroke="#e5841e" stroke-width="2"/>
+<line x1="660" y1="542" x2="660" y2="580" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<line x1="660" y1="580" x2="780" y2="580" stroke="#a03a3a" stroke-width="2"/>
+
+<!-- ═══════════════════════ LEGEND ═══════════════════════ -->
+<rect x="10" y="490" width="160" height="90" rx="8" fill="#0d1118" stroke="#1a2a3f" stroke-width="1"/>
+<text x="20" y="508" font-size="10" fill="#5577aa" letter-spacing="0.5">LEGEND</text>
+<line x1="20" y1="522" x2="50" y2="522" stroke="#1e88e5" stroke-width="2" stroke-dasharray="4 2"/>
+<text x="56" y="526" font-size="10" fill="#4a9ee5">CHW Supply</text>
+<line x1="20" y1="538" x2="50" y2="538" stroke="#42a5c2" stroke-width="2"/>
+<text x="56" y="542" font-size="10" fill="#42a5c2">CHW Return</text>
+<line x1="20" y1="554" x2="50" y2="554" stroke="#e5841e" stroke-width="2"/>
+<text x="56" y="558" font-size="10" fill="#e5841e">CW Supply</text>
+<line x1="20" y1="570" x2="50" y2="570" stroke="#c24242" stroke-width="2" stroke-dasharray="4 2"/>
+<text x="56" y="574" font-size="10" fill="#c24242">CW Return</text>
+
+<!-- ═══════════════════════ SECTION LABELS ═══════════════════════ -->
+<rect x="10" y="248" width="100" height="20" rx="4" fill="#0d1118" stroke="#1a3a55" stroke-width="0.5"/>
+<text x="60" y="262" text-anchor="middle" font-size="9" fill="#1e88e5" letter-spacing="0.5">EVAPORATOR SIDE</text>
+<rect x="630" y="248" width="110" height="20" rx="4" fill="#0d1118" stroke="#3a2800" stroke-width="0.5"/>
+<text x="685" y="262" text-anchor="middle" font-size="9" fill="#e5841e" letter-spacing="0.5">CONDENSER SIDE</text>
+
+</svg>
+</div>
+
+<!-- Detail panel -->
+<div id="detail" style="display:none; margin-top:16px; background:#111827; border:1px solid #1e3a5f; border-radius:10px; padding:14px 18px;">
+  <div style="font-size:11px; color:#5577aa; margin-bottom:4px;" id="d-title">—</div>
+  <div style="font-size:20px; font-weight:500; color:#4caf7d; margin-bottom:8px;" id="d-val">—</div>
+  <div style="font-size:12px; color:#8899bb;" id="d-meta">—</div>
+  <div style="font-size:11px; color:#e5a020; margin-top:6px;" id="d-status"></div>
+</div>
+
+<script>
+function showDetail(name, val, meta, status) {
+  document.getElementById('detail').style.display = 'block';
+  document.getElementById('d-title').textContent = name;
+  document.getElementById('d-val').textContent = val;
+  document.getElementById('d-meta').textContent = meta;
+  var s = document.getElementById('d-status');
+  s.textContent = status || '';
+  s.style.color = (status && status.toLowerCase().includes('above')) ? '#e5a020' : '#4a7a60';
+}
+</script>
+</body>
+</html>
