@@ -147,18 +147,18 @@ const E = {
 /* ══════════════════ MOCK DATA ══════════════════════════════════ */
 // 楼层权重（保持原始比例，总和自动缩放至 DAILY_RATE）
 const _FW=[
-  {id:7,label:'7F',w:180,hl:false},
-  {id:6,label:'6F',w:210,hl:false},
-  {id:5,label:'5F',w:245,hl:false},
-  {id:4,label:'4F',w:332,hl:false},
-  {id:3,label:'3F',w:198,hl:false},
-  {id:2,label:'2F',w:172,hl:true },
-  {id:1,label:'1F',w:152,hl:false},
+  {id:7,label:'7F',w:180,hl:false,pct:18},
+  {id:6,label:'6F',w:210,hl:false,pct:22},
+  {id:5,label:'5F',w:245,hl:false,pct:31},
+  {id:4,label:'4F',w:332,hl:false,pct:-8},
+  {id:3,label:'3F',w:198,hl:false,pct:14},
+  {id:2,label:'2F',w:172,hl:true ,pct:25},
+  {id:1,label:'1F',w:152,hl:false,pct:11},
 ];
 const _WS=_FW.reduce((s,f)=>s+f.w,0); // 1,489
 const FLOORS=_FW.map(f=>{
   const c=Math.round(E.daily*f.w/_WS);
-  return{id:f.id,label:f.label,consumption:c,optimized:Math.round(c*OPT_RATIO),hl:f.hl};
+  return{id:f.id,label:f.label,consumption:c,optimized:Math.round(c*(1-f.pct/100)),hl:f.hl,pct:f.pct};
 });
 // 7F:470  6F:550  5F:642  4F:870  3F:519  2F:451  1F:398  ∑=3,900
 const ZONES=[
@@ -190,6 +190,7 @@ const useE=()=>useContext(ECtx);
 function EProvider({children}){
   const [floors,setFloors]=useState(()=>FLOORS.map(f=>({...f,live:f.consumption,alert:false})));
   const [active,setActive]=useState(2);
+  const [tab,setTab]=useState('Campus');
   useEffect(()=>{
     const id=setInterval(()=>{
       setFloors(prev=>prev.map(f=>{
@@ -199,7 +200,7 @@ function EProvider({children}){
     },3000);
     return ()=>clearInterval(id);
   },[]);
-  return <ECtx.Provider value={{floors,active,setActive}}>{children}</ECtx.Provider>;
+  return <ECtx.Provider value={{floors,active,setActive,tab,setTab}}>{children}</ECtx.Provider>;
 }
 
 /* ══════════════════ TOP NAV ═════════════════════════════════════ */
@@ -544,27 +545,34 @@ function AISuggestionPanel(){
 
 /* ══════════════════ ENERGY CHART ════════════════════════════════ */
 function EnergyChart(){
+  const {floors,active,tab}=useE();
+  const af=floors.find(f=>f.id===active);
+  const isFloor=tab==='Floor'&&af;
+  const ratio=isFloor?af.consumption/E.daily:1;
+  const bars=BAR.map(d=>({t:d.t,c:Math.round(d.c*ratio),o:Math.round(d.o*ratio)}));
+  const yMax=isFloor?Math.ceil((Math.max(...bars.map(d=>d.o))*1.3)/50)*50:750;
   const ref=useRef(null);
+  const firstMount=useRef(true);
   useEffect(()=>{
     let ch,timer;
+    const delay=firstMount.current?2100:300;
+    firstMount.current=false;
     timer=setTimeout(()=>{
     if(!ref.current) return;
     ch=new Chart(ref.current.getContext('2d'),{
       type:'bar',
       plugins:[ChartDataLabels],
       data:{
-        labels:BAR.map(d=>d.t),
+        labels:bars.map(d=>d.t),
         datasets:[
-          {label:'Currently',       data:BAR.map(d=>d.o),backgroundColor:'rgba(148,163,200,0.55)',borderRadius:3,barPercentage:.62,categoryPercentage:.82},
-          {label:'After applying AI suggestions',data:BAR.map(d=>d.c),backgroundColor:'#5576ef',borderRadius:3,barPercentage:.38,categoryPercentage:.82},
+          {label:'Currently',       data:bars.map(d=>d.o),backgroundColor:'rgba(148,163,200,0.55)',borderRadius:3,barPercentage:.62,categoryPercentage:.82},
+          {label:'After applying AI suggestions',data:bars.map(d=>d.c),backgroundColor:'#5576ef',borderRadius:3,barPercentage:.38,categoryPercentage:.82},
         ],
       },
       options:{
         responsive:true,maintainAspectRatio:false,
         plugins:{
-          legend:{
-            display:false,
-          },
+          legend:{display:false},
           tooltip:{backgroundColor:'#0d1829',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#fff',bodyColor:'#94a3b8',callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw} kWh`}},
           datalabels:{
             anchor:'end',align:'top',
@@ -578,19 +586,19 @@ function EnergyChart(){
         scales:{
           x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}},border:{display:false}},
           y:{
-            max:750,
+            max:yMax,
             grid:{color:'rgba(255,255,255,.07)',borderDash:[3,3]},
-            ticks:{color:'#94a3b8',font:{size:10},stepSize:200},
+            ticks:{color:'#94a3b8',font:{size:10},stepSize:Math.ceil(yMax/4/50)*50},
             border:{display:false},
           },
         },
         animation:{duration:700,easing:'easeOutCubic',
-          delay:ctx=>ctx.type==='data'?ctx.dataIndex*500:0},
+          delay:ctx=>ctx.type==='data'?ctx.dataIndex*80:0},
       },
     });
-    },2100);
+    },delay);
     return()=>{clearTimeout(timer);ch?.destroy();};
-  },[]);
+  },[active,tab]);
   return(
     <div className="pa2">
       <div style={{height:40,display:'flex',alignItems:'center'}}>
@@ -622,9 +630,19 @@ function GreenDot(){
     </div>
   );
 }
-function Card({label,cur,opt,unit,delay=0}){
+function RedDot(){
+  return(
+    <div style={{width:16,height:16,borderRadius:'50%',background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+        <path d="M4.5 1.5V6M2 4.5L4.5 7L7 4.5" stroke="#18191F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" transform="rotate(180 4.5 4.5)"/>
+      </svg>
+    </div>
+  );
+}
+function Card({label,cur,opt,unit,delay=0,pct=25}){
   const[count,done]=useCountUp(cur,3150,delay);
   const display=done?cur:count;
+  const isNeg=pct<0;
   return(
     <div style={{background:'rgba(24,25,31,0.90)',borderRadius:10,backdropFilter:'blur(2px)',WebkitBackdropFilter:'blur(2px)',padding:16,display:'flex',flexDirection:'column',gap:12,height:111}}>
       <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -637,14 +655,28 @@ function Card({label,cur,opt,unit,delay=0}){
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <span style={{fontSize:13,fontWeight:500,color:'#8098f6'}}>{fmt(opt)} {unit}</span>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <span style={{fontSize:13,fontWeight:500,color:'#22c55e'}}>+25%</span>
-          <GreenDot/>
+          <span style={{fontSize:13,fontWeight:500,color:isNeg?'#ef4444':'#22c55e'}}>{isNeg?pct:`+${pct}`}%</span>
+          {isNeg?<RedDot/>:<GreenDot/>}
         </div>
       </div>
     </div>
   );
 }
 function StatsCards(){
+  const {floors,active,tab}=useE();
+  const af=floors.find(f=>f.id===active);
+  if(tab==='Floor'&&af){
+    const d=af.live;
+    const r=1-af.pct/100;
+    return(
+      <div className="pa3" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <Card key={`${active}-d`} label="Daily consumption"   cur={d}     opt={Math.round(d*r)}     unit="kWh" delay={0}   pct={af.pct}/>
+        <Card key={`${active}-w`} label="Weekly consumption"  cur={d*7}   opt={Math.round(d*7*r)}   unit="kWh" delay={50}  pct={af.pct}/>
+        <Card key={`${active}-m`} label="Monthly consumption" cur={d*30}  opt={Math.round(d*30*r)}  unit="kWh" delay={100} pct={af.pct}/>
+        <Card key={`${active}-y`} label="Yearly consumption"  cur={d*365} opt={Math.round(d*365*r)} unit="kWh" delay={150} pct={af.pct}/>
+      </div>
+    );
+  }
   return(
     <div className="pa3" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
       <Card label="Daily consumption"   cur={E.daily}   opt={Math.round(E.daily*OPT_RATIO)}   unit="kWh" delay={2000}/>
@@ -723,27 +755,38 @@ const crosshairPlugin={
   }
 };
 function SavingsChart(){
+  const {floors,active,tab}=useE();
+  const af=floors.find(f=>f.id===active);
+  const isFloor=tab==='Floor'&&af;
+  const ratio=isFloor?af.consumption/E.daily:1;
+  const savings=SAVINGS.map(d=>({d:d.d,cost:Math.round(d.cost*ratio),en:Math.round(d.en*ratio)}));
+  const costTotal=isFloor?Math.round(20200*ratio):20200;
+  const enTotal=isFloor?Math.round(2400*ratio):2400;
+  const co2Total=isFloor?Math.round(135*ratio):135;
+  const fmtSav=v=>v>=1000?`${(v/1000).toFixed(1)}k`:String(v);
   const ref=useRef(null);
+  const firstMount=useRef(true);
   useEffect(()=>{
     if(!ref.current) return;
-    // ── 动态 Y 轴：根据 cost 最大值自动均分 5 格 ──────────────────
-    const _maxCost = Math.max(...SAVINGS.map(d=>d.cost));
-    const _mag     = Math.pow(10, Math.floor(Math.log10(_maxCost)));
-    const _niceMax = Math.ceil(_maxCost / _mag) * _mag;   // 向上取整到最近数量级
-    const _step    = _niceMax / 5;                         // 均分 5 格
+    const delay=firstMount.current?2050:300;
+    firstMount.current=false;
+    const _maxCost = Math.max(...savings.map(d=>d.cost));
+    const _mag     = Math.pow(10, Math.floor(Math.log10(_maxCost||1)));
+    const _niceMax = Math.ceil(_maxCost / _mag) * _mag;
+    const _step    = _niceMax / 5;
     const _sTicks  = Array.from({length:6},(_,i)=>({value:i*_step}));
     const ch=new Chart(ref.current.getContext('2d'),{
       type:'line',
       plugins:[lineDrawPlugin,crosshairPlugin],
       data:{
-        labels:SAVINGS.map(d=>d.d),
+        labels:savings.map(d=>d.d),
         datasets:[
-          {label:'Cost savings',data:SAVINGS.map(d=>d.cost),
+          {label:'Cost savings',data:savings.map(d=>d.cost),
            borderColor:'rgba(155,170,215,0.85)',borderWidth:2.5,
            pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'rgba(155,170,215,1)',
            pointHoverBorderColor:'#fff',pointHoverBorderWidth:1.5,
            tension:.4,fill:false},
-          {label:'Energy savings',data:SAVINGS.map(d=>d.en),
+          {label:'Energy savings',data:savings.map(d=>d.en),
            borderColor:'#6272e0',borderWidth:1.5,
            pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#6272e0',
            pointHoverBorderColor:'#fff',pointHoverBorderWidth:1.5,
@@ -768,26 +811,15 @@ function SavingsChart(){
           },
         },
         scales:{
-          x:{
-            grid:{color:'rgba(255,255,255,.06)',borderDash:[3,3]},
-            ticks:{color:'#94a3b8',font:{size:10}},
-            border:{display:false},
-          },
-          y:{
-            min:0, max:_niceMax,
-            grid:{color:'rgba(255,255,255,.06)',borderDash:[3,3]},
-            ticks:{color:'#94a3b8',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},
-            border:{display:false},
-            afterBuildTicks:scale=>{scale.ticks=_sTicks;},
-          },
+          x:{grid:{color:'rgba(255,255,255,.06)',borderDash:[3,3]},ticks:{color:'#94a3b8',font:{size:10}},border:{display:false}},
+          y:{min:0,max:_niceMax,grid:{color:'rgba(255,255,255,.06)',borderDash:[3,3]},ticks:{color:'#94a3b8',font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v},border:{display:false},afterBuildTicks:scale=>{scale.ticks=_sTicks;}},
         },
       },
     });
-    // 折线从左向右绘制动画，与 pa4 同步（2.0s delay）
     ch._lineProgress=0;
     let raf;
     const drawTimer=setTimeout(()=>{
-      const s=performance.now(),dur=2950;
+      const s=performance.now(),dur=1500;
       function step(now){
         const p=Math.min((now-s)/dur,1);
         ch._lineProgress=p<0.5?2*p*p:-1+(4-2*p)*p;
@@ -796,9 +828,9 @@ function SavingsChart(){
         else delete ch._lineProgress;
       }
       raf=requestAnimationFrame(step);
-    },2050);
+    },delay);
     return()=>{clearTimeout(drawTimer);cancelAnimationFrame(raf);ch.destroy();};
-  },[]);
+  },[active,tab]);
   return(
     <div className="pa4" style={{flex:1,display:'flex',flexDirection:'column',minHeight:220}}>
       <div style={{height:40,display:'flex',alignItems:'center'}}>
@@ -806,7 +838,7 @@ function SavingsChart(){
       </div>
       <div style={{flex:1,display:'flex',flexDirection:'column',background:'rgba(24,25,31,0.90)',backdropFilter:'blur(2px)',WebkitBackdropFilter:'blur(2px)',borderRadius:10,padding:16,minHeight:0,gap:12}}>
         <div style={{display:'flex',gap:16}}>
-          {[['20.2k','RM','Cost savings'],['2.4k','kWh','Energy savings'],['135','CO²','Emission']].map(([v,u,l])=>(
+          {[[fmtSav(costTotal),'RM','Cost savings'],[fmtSav(enTotal),'kWh','Energy savings'],[String(co2Total),'CO²','Emission']].map(([v,u,l])=>(
             <div key={l} style={{flex:1}}>
               <div style={{display:'flex',alignItems:'baseline',gap:3}}>
                 <span style={{fontSize:20,fontWeight:500,color:'#fff'}}>{v}</span>
@@ -831,7 +863,7 @@ function Building3D({aiOpen=false}){
   return(
     <div style={{width:'100%',height:'100%',position:'relative',overflow:'hidden',background:'#07090f'}}>
       {/* Floor plan — responsive, fills the center-right zone */}
-      <div style={{position:'absolute',left:'13%',top:'12%',right:'18%',bottom:'22%',pointerEvents:'none',userSelect:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{position:'absolute',left:'calc(13% + 200px)',top:'calc(12% + 50px)',right:'calc(18% - 200px)',bottom:'calc(22% - 50px)',pointerEvents:'none',userSelect:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
         {/* Shadow layer */}
         <img src="rd/floor-plan.svg" alt="" style={{position:'absolute',width:'100%',height:'100%',objectFit:'contain',opacity:0.12,transform:'translateY(8%)'}}/>
         {/* Main layer */}
@@ -1315,8 +1347,7 @@ const VIEW_IMGS={
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
 function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefresh}){
-  const {setActive:setCtxFloorActive}=useE();
-  const [tab,setTab]=useState('Campus');
+  const {setActive:setCtxFloorActive,tab,setTab}=useE();
   const [tabBarVisible,setTabBarVisible]=useState(false);
   const [bearingVisible,setBearingVisible]=useState(false);
   const [viewModalOpen,setViewModalOpen]=useState(null);
@@ -1420,16 +1451,24 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                       <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>{zBFloor} Floor</span>
                       <button
-                        title={'查看平层'}
+                        title={'View Floor Plan'}
                         onClick={()=>{setCtxFloorActive(zBFloor);setTab('Floor');}}
                         style={{display:'flex',alignItems:'center',justifyContent:'center',width:24,height:24,borderRadius:6,background:'rgba(85,118,239,0.18)',border:'1px solid rgba(85,118,239,0.45)',cursor:'pointer',flexShrink:0,transition:'background .15s'}}
                         onMouseEnter={e=>e.currentTarget.style.background='rgba(85,118,239,0.35)'}
                         onMouseLeave={e=>e.currentTarget.style.background='rgba(85,118,239,0.18)'}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8ba4f8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="8" height="8" rx="1"/>
-                          <rect x="13" y="3" width="8" height="8" rx="1"/>
-                          <rect x="3" y="13" width="8" height="8" rx="1"/>
-                          <rect x="13" y="13" width="8" height="8" rx="1"/>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8ba4f8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 3h8v8H3z"/>
+                          <path d="M13 3h8v8h-8z"/>
+                          <path d="M3 13h8v8H3z"/>
+                          <path d="M13 13h8v8h-8z"/>
+                          <line x1="7" y1="3" x2="7" y2="11"/>
+                          <line x1="3" y1="7" x2="11" y2="7"/>
+                          <line x1="17" y1="3" x2="17" y2="11"/>
+                          <line x1="13" y1="7" x2="21" y2="7"/>
+                          <line x1="7" y1="13" x2="7" y2="21"/>
+                          <line x1="3" y1="17" x2="11" y2="17"/>
+                          <line x1="17" y1="13" x2="17" y2="21"/>
+                          <line x1="13" y1="17" x2="21" y2="17"/>
                         </svg>
                       </button>
                     </div>
@@ -1490,11 +1529,11 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
                       style={{display:'flex',alignItems:'center',justifyContent:'center',width:24,height:24,borderRadius:6,background:'rgba(85,118,239,0.18)',border:'1px solid rgba(85,118,239,0.45)',cursor:'pointer',flexShrink:0,transition:'background .15s'}}
                       onMouseEnter={e=>e.currentTarget.style.background='rgba(85,118,239,0.35)'}
                       onMouseLeave={e=>e.currentTarget.style.background='rgba(85,118,239,0.18)'}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8ba4f8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="8" height="8" rx="1"/>
-                        <rect x="13" y="3" width="8" height="8" rx="1"/>
-                        <rect x="3" y="13" width="8" height="8" rx="1"/>
-                        <rect x="13" y="13" width="8" height="8" rx="1"/>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8ba4f8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 3h10v10H3z"/>
+                        <path d="M13 13h8v8h-8z"/>
+                        <path d="M3 3v10h10V3"/>
+                        <path d="M13 13v8h8v-8"/>
                       </svg>
                     </button>
                   </div>
