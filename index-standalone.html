@@ -830,39 +830,13 @@ function Building3D({aiOpen=false}){
 
   return(
     <div style={{width:'100%',height:'100%',position:'relative',overflow:'hidden',background:'#07090f'}}>
-      {/* SVG floor plan — fills the view */}
-      <img
-        src="rd/floor-plan.svg"
-        alt="Floor Plan"
-        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',userSelect:'none',pointerEvents:'none'}}
-      />
-      {/* Floor label badge — top left */}
-      {af&&(
-        <div style={{position:'absolute',top:20,left:'calc(50% - 80px)',zIndex:20,
-          background:'rgba(0,229,160,0.12)',border:'1px solid rgba(0,229,160,0.35)',
-          borderRadius:100,padding:'4px 18px',
-          color:'#00e5a0',fontSize:15,fontWeight:700,letterSpacing:1,
-          display:'flex',alignItems:'center',gap:8}}>
-          <span>{af.label}</span>
-          <span style={{width:6,height:6,borderRadius:'50%',background:'#00e5a0',display:'inline-block',boxShadow:'0 0 6px #00e5a0'}}/>
-        </div>
-      )}
-      {/* Tooltip — consumption data */}
-      {af&&(
-        <div style={{position:'absolute',left:480,top:'50%',transform:'translateY(-50%)',zIndex:20,
-          background:'rgba(10,20,40,.95)',border:'1px solid rgba(255,255,255,.12)',
-          borderRadius:10,padding:'12px 14px',minWidth:180,
-          boxShadow:'0 8px 32px rgba(0,0,0,.5)',pointerEvents:'none'}}>
-          <p style={{fontSize:14,fontWeight:700,marginBottom:8}}>{af.label}</p>
-          <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>Current consumption</p>
-          <p style={{fontSize:16,fontWeight:700,marginBottom:8}}>{af.live} <span style={{fontSize:11,fontWeight:400}}>kWh</span></p>
-          <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>After optimization</p>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:15,fontWeight:700,color:'var(--primary)'}}>{af.optimized} <span style={{fontSize:11,fontWeight:400,color:'var(--primary)'}}>kWh</span></span>
-            <span className="badge-green">+{sp}% <span className="dot"/></span>
-          </div>
-        </div>
-      )}
+      {/* Floor plan — responsive, fills the center-right zone */}
+      <div style={{position:'absolute',left:'13%',top:'12%',right:'18%',bottom:'22%',pointerEvents:'none',userSelect:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {/* Shadow layer */}
+        <img src="rd/floor-plan.svg" alt="" style={{position:'absolute',width:'100%',height:'100%',objectFit:'contain',opacity:0.12,transform:'translateY(8%)'}}/>
+        {/* Main layer */}
+        <img src="rd/floor-plan.svg" alt="" style={{position:'absolute',width:'100%',height:'100%',objectFit:'contain'}}/>
+      </div>
     </div>
   );
 }
@@ -1229,7 +1203,7 @@ function MapControls({onToggle3D,onTogglePanel,panelVisible,onRefresh,tab,onTogg
 // 3 cards — each with its own thumbnail image, crop, and modal image
 const VIEW_CARD_DEFS=[
   {src:'rd/view1.png', h:'136.91%', top:'-18.75%', overlay:false, modal:'rd/chiller-plant.html'},
-  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/chiller_plant_diagram.html'},
+  {src:'rd/view2.png', h:'100%',    top:'0%',      overlay:true,  modal:'rd/viewimg02.png'},
   {src:'rd/view3.png', h:'144.63%', top:'-11.97%', overlay:false, modal:'rd/ahu-view.html'},
 ];
 function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
@@ -1261,7 +1235,7 @@ function ViewCard({onClick,imgSrc,imgH,imgTop,hasOverlay}){
 /* ── View Modal ── */
 const VIEW_OPTIONS=[
   {label:'Chiller Plant',     src:'rd/chiller-plant.html'},
-  {label:'Chiller Diagram',   src:'rd/chiller_plant_diagram.html'},
+  {label:'Chiller Diagram',   src:'rd/viewimg02.png'},
   {label:'AHU System',        src:'rd/ahu-view.html'},
 ];
 function ViewModal({onClose,img}){
@@ -1372,23 +1346,9 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
   return(
     <div style={{position:'absolute',inset:0}}>
       <div style={{position:'absolute',top:16,left:'50%',transform:`translateX(-50%) translateY(${tabBarVisible?0:-60}px)`,opacity:tabBarVisible?1:0,pointerEvents:tabBarVisible?'auto':'none',display:'flex',alignItems:'center',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',borderRadius:100,padding:'2px 6px 2px 2px',width:660,transition:'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .35s'}}>
-        {['Campus','Building','Floor'].map(t=>{const a=t===tab;return(
+        {['Campus','Building','Floor','Zone'].map(t=>{const a=t===tab;return(
           <button key={t} onClick={()=>{setTab(t);setBearingVisible(false);onRefresh&&onRefresh();}} style={{flex:1,padding:'5px 16px',borderRadius:100,fontSize:16,fontWeight:a?700:400,color:a?'#fff':'rgba(255,255,255,0.85)',background:a?'#16171a':'transparent',border:'none',cursor:'pointer',transition:'all .15s'}}>{t}</button>
         );})}
-        {/* Zone divider + selector */}
-        <div style={{width:1,height:20,background:'rgba(255,255,255,0.15)',flexShrink:0,margin:'0 6px'}}/>
-        <select
-          value={zZone}
-          onChange={e=>setZZone(e.target.value)}
-          style={{flex:'0 0 165px',padding:'5px 12px',borderRadius:100,fontSize:13,fontWeight:500,
-            color:'rgba(255,255,255,0.85)',background:'rgba(255,255,255,0.07)',
-            border:'1px solid rgba(255,255,255,0.15)',cursor:'pointer',outline:'none'}}>
-          {ZONES.map(z=>(
-            <option key={z.id} value={z.id} style={{background:'#0d1829',color:'#e2e8f0'}}>
-              {z.label + ' - ' + z.name}
-            </option>
-          ))}
-        </select>
       </div>
       {/* Tab bar toggle button — top right, left of app icon */}
       <button title={tabBarVisible?'隐藏导航栏':'显示导航栏'} onClick={()=>setTabBarVisible(v=>!v)}
