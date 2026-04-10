@@ -80,6 +80,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 *::-webkit-scrollbar-thumb:hover{background:rgba(77,138,240,0.5)}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes globe-spin{to{transform:rotate(360deg)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
 @keyframes slideInR{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
@@ -856,14 +857,14 @@ function SavingsChart(){
 
 /* ══════════════════ 3D BUILDING ═════════════════════════════════ */
 function Building3D({aiOpen=false}){
-  const {floors,active,setActive}=useE();
+  const {floors,active,setActive,setTab}=useE();
   const af=floors.find(f=>f.id===active);
   const sp=af?Math.max(0,Math.round((1-af.optimized/af.live)*100)):25;
 
   return(
     <div style={{width:'100%',height:'100%',position:'relative',overflow:'hidden',background:'#07090f'}}>
       {/* Floor plan — responsive, fills the center-right zone */}
-      <div style={{position:'absolute',left:'calc(13% + 200px)',top:'calc(12% + 50px)',right:'calc(18% - 200px)',bottom:'calc(22% - 50px)',pointerEvents:'none',userSelect:'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div onClick={()=>setTab('Zone')} style={{position:'absolute',left:'calc(13% + 200px)',top:'calc(12% + 50px)',right:'calc(18% - 200px)',bottom:'calc(22% - 50px)',pointerEvents:'auto',userSelect:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
         {/* Shadow layer */}
         <img src="rd/floor-plan.svg" alt="" style={{position:'absolute',width:'100%',height:'100%',objectFit:'contain',opacity:0.12,transform:'translateY(8%)'}}/>
         {/* Main layer */}
@@ -885,10 +886,228 @@ function FloorSelector({panelVisible=true}){
   );
 }
 
+/* ══════════════════ FLOOR 3D VIEW ══════════════════════════════ */
+function FloorView3D({onClose}){
+  const canvasRef=useRef(null);
+  const [selDev,setSelDev]=useState(null);
+
+  const ROOMS=[
+    {id:'A',name:'Lecture Hall A',  x:20, z:16, w:18,d:14},
+    {id:'B',name:'Computer Lab',    x:20, z:-10,w:18,d:14},
+    {id:'C',name:'Faculty Office',  x:-2, z:16, w:18,d:14},
+    {id:'D',name:'Seminar Room',    x:-2, z:-10,w:18,d:14},
+    {id:'E',name:'Admin Office',    x:-18,z:4,  w:14,d:10},
+  ];
+  const DEVICES=[
+    {id:'CAM-01', type:'camera', x:24, z:18, status:'online',  label:'Camera'},
+    {id:'CAM-02', type:'camera', x:-6, z:-13,status:'online',  label:'Camera'},
+    {id:'TEMP-01',type:'temp',   x:10, z:0,  status:'normal',  value:'24°C'},
+    {id:'TEMP-02',type:'temp',   x:-12,z:10, status:'warning', value:'28°C'},
+    {id:'ALARM-01',type:'alarm', x:4,  z:5,  status:'triggered',label:'ALARM'},
+  ];
+  const STATS=[
+    {label:'Rooms',    value:'5'},
+    {label:'Cameras',  value:'2 Online'},
+    {label:'Temp',     value:'1 Warning'},
+    {label:'Alarms',   value:'1 Active'},
+  ];
+  const statusColor={online:'#00ff88',normal:'#00ff88',warning:'#ffaa00',triggered:'#ff3333'};
+
+  useEffect(()=>{
+    const el=canvasRef.current; if(!el)return;
+    const W=el.clientWidth,H=el.clientHeight;
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x060c1a);
+
+    // Camera — proper isometric angle
+    const camera=new THREE.PerspectiveCamera(45,W/H,0.1,500);
+    camera.position.set(52,48,52);
+
+    // Renderer — capped DPR for perf
+    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+    renderer.setSize(W,H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+    renderer.sortObjects=false;
+    el.appendChild(renderer.domElement);
+
+    // Controls — smooth damping, restrict vertical
+    const controls=new THREE.OrbitControls(camera,renderer.domElement);
+    controls.target.set(2,2,3);
+    controls.enableDamping=true;
+    controls.dampingFactor=0.12;
+    controls.minPolarAngle=0.3;
+    controls.maxPolarAngle=Math.PI*0.45;
+    controls.minDistance=20;
+    controls.maxDistance=120;
+    camera.lookAt(controls.target);
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0x2a4466,1.4));
+    const dL=new THREE.DirectionalLight(0x88aaff,0.9);
+    dL.position.set(40,70,40);scene.add(dL);
+    const pL=new THREE.PointLight(0x0055ff,1.5,80);
+    pL.position.set(2,18,3);scene.add(pL);
+
+    // Grid (smaller, less visual noise)
+    scene.add(new THREE.GridHelper(80,16,0x0e1f40,0x091528));
+
+    // Ground
+    const gnd=new THREE.Mesh(new THREE.BoxGeometry(80,0.3,80),
+      new THREE.MeshPhongMaterial({color:0x0c1628}));
+    gnd.position.y=-0.2;scene.add(gnd);
+
+    // Base slab
+    const slab=new THREE.Mesh(new THREE.BoxGeometry(50,0.6,38),
+      new THREE.MeshPhongMaterial({color:0x16203e}));
+    slab.position.set(2,0.15,3);scene.add(slab);
+
+    // Rooms — shared materials (no clone per room = fewer draw calls)
+    const FH=6;
+    const wallMat=new THREE.MeshPhongMaterial({color:0x1e4090,transparent:true,opacity:0.22,side:THREE.DoubleSide,depthWrite:false});
+    const edgeMat=new THREE.LineBasicMaterial({color:0x00ccff,transparent:true,opacity:0.85});
+    ROOMS.forEach(r=>{
+      const geo=new THREE.BoxGeometry(r.w,FH,r.d);
+      const mesh=new THREE.Mesh(geo,wallMat);
+      mesh.position.set(r.x,FH/2,r.z);scene.add(mesh);
+      const lines=new THREE.LineSegments(new THREE.EdgesGeometry(geo),edgeMat);
+      lines.position.copy(mesh.position);scene.add(lines);
+    });
+    // Corridor
+    const cGeo=new THREE.BoxGeometry(52,FH,9);
+    const cMat=new THREE.MeshPhongMaterial({color:0x102050,transparent:true,opacity:0.14,side:THREE.DoubleSide,depthWrite:false});
+    const cMesh=new THREE.Mesh(cGeo,cMat);cMesh.position.set(2,FH/2,3);scene.add(cMesh);
+    const cLines=new THREE.LineSegments(new THREE.EdgesGeometry(cGeo),
+      new THREE.LineBasicMaterial({color:0x0077bb,transparent:true,opacity:0.45}));
+    cLines.position.copy(cMesh.position);scene.add(cLines);
+
+    // Device markers — smaller, tighter glow
+    const markers=[];
+    DEVICES.forEach(dev=>{
+      const col=statusColor[dev.status]||'#00ff88';
+      const dc=document.createElement('canvas');dc.width=48;dc.height=48;
+      const dctx=dc.getContext('2d');
+      const grd=dctx.createRadialGradient(24,24,3,24,24,20);
+      grd.addColorStop(0,col+'bb');grd.addColorStop(0.5,col+'44');grd.addColorStop(1,col+'00');
+      dctx.beginPath();dctx.arc(24,24,20,0,Math.PI*2);dctx.fillStyle=grd;dctx.fill();
+      dctx.beginPath();dctx.arc(24,24,6,0,Math.PI*2);dctx.fillStyle=col;dctx.fill();
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthTest:false}));
+      sp.position.set(dev.x,FH+2.2,dev.z);
+      sp.scale.set(3.5,3.5,1);sp.userData={dev,baseS:3.5};
+      markers.push(sp);scene.add(sp);
+    });
+
+    // Raycaster
+    const rc=new THREE.Raycaster();let mdx=0,mdy=0;
+    function onDn(e){mdx=e.clientX;mdy=e.clientY;}
+    function onCk(e){
+      if(Math.abs(e.clientX-mdx)>5||Math.abs(e.clientY-mdy)>5)return;
+      const rect=el.getBoundingClientRect();
+      rc.setFromCamera(new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1),camera);
+      const hits=rc.intersectObjects(markers);
+      if(hits.length>0)setSelDev(hits[0].object.userData.dev);
+    }
+    el.addEventListener('mousedown',onDn);el.addEventListener('click',onCk);
+
+    // Animate — pulse only warning/triggered markers
+    let aid,lastT=0;
+    function animate(ts){
+      aid=requestAnimationFrame(animate);
+      controls.update();
+      const t=ts*0.001;
+      if(t-lastT<0.016){renderer.render(scene,camera);return;}// cap ~60fps
+      lastT=t;
+      markers.forEach(m=>{
+        const d=m.userData.dev;
+        if(d.status==='warning'||d.status==='triggered'){
+          const p=m.userData.baseS*(1+Math.sin(t*3.5)*0.2);
+          m.scale.set(p,p,1);
+        }
+      });
+      renderer.render(scene,camera);
+    }
+    animate(0);
+    function onR(){const w=el.clientWidth,h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+    window.addEventListener('resize',onR);
+    return()=>{cancelAnimationFrame(aid);window.removeEventListener('resize',onR);el.removeEventListener('mousedown',onDn);el.removeEventListener('click',onCk);renderer.dispose();if(el.contains(renderer.domElement))el.removeChild(renderer.domElement);};
+  },[]);
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:210,display:'flex',background:'#060c1a'}}>
+      {/* 3D canvas */}
+      <div ref={canvasRef} style={{flex:1,position:'relative'}}>
+        <div style={{position:'absolute',top:16,left:20,zIndex:5,color:'rgba(0,220,255,0.6)',fontSize:11,fontWeight:600,letterSpacing:2,textTransform:'uppercase'}}>
+          TAR UMT &nbsp;·&nbsp; TSSB Level 3 &nbsp;·&nbsp; Digital Twin
+        </div>
+        <div style={{position:'absolute',bottom:16,left:16,zIndex:5,color:'rgba(255,255,255,0.25)',fontSize:10}}>
+          Drag to rotate · Scroll to zoom · Click marker for details
+        </div>
+      </div>
+      {/* Side panel */}
+      <div style={{width:252,background:'rgba(4,8,20,0.98)',borderLeft:'1px solid rgba(0,200,255,0.15)',display:'flex',flexDirection:'column'}}>
+        {/* header */}
+        <div style={{padding:'14px 16px 12px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:'#00dfff',fontSize:13,fontWeight:700}}>Floor 3D View</div>
+            <div style={{color:'rgba(255,255,255,0.3)',fontSize:10,marginTop:2}}>Tun Tan Siew Sin Bldg</div>
+          </div>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:'50%',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',color:'#fff',fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>{'\u2715'}</button>
+        </div>
+        {/* device detail */}
+        <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',minHeight:78}}>
+          {selDev?(
+            <div>
+              <div style={{color:'rgba(255,255,255,0.35)',fontSize:10,marginBottom:6,textTransform:'uppercase',letterSpacing:1}}>Device Details</div>
+              <div style={{color:'#fff',fontSize:13,fontWeight:700,marginBottom:5}}>{selDev.id}</div>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:statusColor[selDev.status],display:'inline-block'}}/>
+                <span style={{color:'rgba(255,255,255,0.5)',fontSize:11,textTransform:'capitalize'}}>{selDev.status}</span>
+              </div>
+              {selDev.value&&<div style={{color:'#00dfff',fontSize:20,fontWeight:700,marginTop:6}}>{selDev.value}</div>}
+            </div>
+          ):(
+            <div style={{color:'rgba(255,255,255,0.22)',fontSize:11,lineHeight:1.6,paddingTop:6}}>Click a glowing marker on the floor plan to view device details.</div>
+          )}
+        </div>
+        {/* stats */}
+        <div style={{padding:'12px 16px',flex:1}}>
+          <div style={{color:'rgba(255,255,255,0.4)',fontSize:10,marginBottom:8,textTransform:'uppercase',letterSpacing:1}}>Floor Statistics</div>
+          {STATS.map((s,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+              <span style={{color:'rgba(255,255,255,0.38)',fontSize:11}}>{s.label}</span>
+              <span style={{color:'#00dfff',fontSize:11,fontWeight:600}}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+        {/* mini-map */}
+        <div style={{padding:'10px 16px 16px'}}>
+          <div style={{color:'rgba(255,255,255,0.35)',fontSize:10,marginBottom:6,textTransform:'uppercase',letterSpacing:1}}>Floor Map</div>
+          <div style={{background:'rgba(8,14,32,0.9)',border:'1px solid rgba(0,170,255,0.18)',borderRadius:6,padding:6}}>
+            <svg width="100%" viewBox="0 0 200 130">
+              <rect x="15" y="10" width="170" height="110" rx="3" fill="rgba(20,50,130,0.35)" stroke="#0066aa" strokeWidth="1"/>
+              <line x1="100" y1="10" x2="100" y2="120" stroke="#004477" strokeWidth="0.6"/>
+              <line x1="15" y1="65" x2="185" y2="65" stroke="#004477" strokeWidth="0.6"/>
+              {[{x:58,y:36,l:'A'},{x:142,y:36,l:'B'},{x:58,y:90,l:'C'},{x:142,y:90,l:'D'},{x:14,y:58,l:'E'}].map(r=>(
+                <text key={r.l} x={r.x} y={r.y} fill="rgba(0,200,255,0.55)" fontSize="12" textAnchor="middle" fontWeight="bold">{r.l}</text>
+              ))}
+              {[{x:72,y:28,c:'#00ff88'},{x:152,y:85,c:'#00ff88'},{x:110,y:65,c:'#00ff88'},{x:48,y:80,c:'#ffaa00'},{x:102,y:60,c:'#ff3333'}].map((d,i)=>(
+                <circle key={i} cx={d.x} cy={d.y} r="4.5" fill={d.c} opacity="0.9"/>
+              ))}
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════ GLOBE 3D ════════════════════════════════════ */
 function Globe3D({onClose}){
   const mountRef=useRef(null);
   const [showBldg,setShowBldg]=useState(false);
+  const [showZBldg,setShowZBldg]=useState(false);
+  const [zbFloor,setZbFloor]=useState(2);
+  const [showFloor,setShowFloor]=useState(false);
+  const [ready,setReady]=useState(false);
   const flyRef=useRef({active:false,targetRy:0,targetRx:0,onDone:null});
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;
@@ -924,51 +1143,98 @@ function Globe3D({onClose}){
     }
     const LAT=3.2163,LNG=101.7291;
     const mPos=latLngTo3D(LAT,LNG,1.012);
-    // 红色圆点
+    // ① Glow halo (soft, larger, semi-transparent)
+    const glowMesh=new THREE.Mesh(
+      new THREE.SphereGeometry(0.042,16,16),
+      new THREE.MeshBasicMaterial({color:0xff2200,transparent:true,opacity:0.18,depthWrite:false})
+    );
+    glowMesh.position.copy(mPos);
+    group.add(glowMesh);
+    // ② Core red dot
     const dotMesh=new THREE.Mesh(
-      new THREE.SphereGeometry(0.022,16,16),
+      new THREE.SphereGeometry(0.020,16,16),
       new THREE.MeshBasicMaterial({color:0xff3333})
     );
     dotMesh.position.copy(mPos);
     dotMesh.userData={isMarker:true};
     group.add(dotMesh);
-    // 不可见大碰撞球（更易点击）
+    // ③ Invisible hit sphere (easier to click)
     const hitMesh=new THREE.Mesh(
-      new THREE.SphereGeometry(0.06,8,8),
+      new THREE.SphereGeometry(0.07,8,8),
       new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})
     );
     hitMesh.position.copy(mPos);
     hitMesh.userData={isMarker:true};
     group.add(hitMesh);
-    // 2 个脉冲环（相位错开 0.5）
-    const pulses=[];
-    for(let i=0;i<2;i++){
-      const pm=new THREE.Mesh(
-        new THREE.RingGeometry(0.022,0.032,32),
-        new THREE.MeshBasicMaterial({color:0xff4444,transparent:true,opacity:0.7,side:THREE.DoubleSide})
+    // ④ Pulse Sprites (always face camera, 2 rings phase-offset by 0.5)
+    function makePulseSprite(phase){
+      const pc=document.createElement('canvas');pc.width=128;pc.height=128;
+      const px=pc.getContext('2d');
+      px.strokeStyle='rgba(255,60,60,1)';px.lineWidth=5;
+      px.beginPath();px.arc(64,64,52,0,Math.PI*2);px.stroke();
+      const sp=new THREE.Sprite(
+        new THREE.SpriteMaterial({map:new THREE.CanvasTexture(pc),transparent:true,depthTest:false})
       );
-      pm.position.copy(mPos);
-      pm.lookAt(new THREE.Vector3(0,0,0));
-      pm.rotateX(Math.PI/2);
-      pm.userData={isPulse:true,phase:i*0.5};
-      group.add(pm);pulses.push(pm);
+      sp.position.copy(mPos);
+      sp.scale.set(0.09,0.09,1);
+      sp.userData={isPulse:true,phase};
+      return sp;
     }
-    // 文字 Sprite
-    const lc=document.createElement('canvas');lc.width=256;lc.height=64;
+    const pulses=[makePulseSprite(0),makePulseSprite(0.5)];
+    pulses.forEach(s=>group.add(s));
+    // ⑤ Label Sprite — gold ranking tag style (like image 2)
+    const lc=document.createElement('canvas');lc.width=320;lc.height=72;
     const lctx=lc.getContext('2d');
-    lctx.fillStyle='rgba(0,0,0,0.72)';
-    lctx.beginPath();lctx.moveTo(12,8);lctx.lineTo(244,8);
-    lctx.arcTo(252,8,252,16,8);lctx.lineTo(252,48);lctx.arcTo(252,56,244,56,8);
-    lctx.lineTo(12,56);lctx.arcTo(4,56,4,48,8);lctx.lineTo(4,16);lctx.arcTo(4,8,12,8,8);
-    lctx.closePath();lctx.fill();
-    lctx.fillStyle='#ffffff';lctx.font='bold 22px Arial,sans-serif';
-    lctx.textAlign='center';lctx.textBaseline='middle';
-    lctx.fillText('TAR UMT',128,32);
+    const R=10; // corner radius
+    // Main pill background: dark navy with subtle gradient
+    const bgGrad=lctx.createLinearGradient(0,0,0,72);
+    bgGrad.addColorStop(0,'rgba(8,14,35,0.95)');
+    bgGrad.addColorStop(1,'rgba(4,8,22,0.95)');
+    lctx.fillStyle=bgGrad;
+    lctx.beginPath();lctx.moveTo(R,0);lctx.lineTo(320-R,0);
+    lctx.arcTo(320,0,320,R,R);lctx.lineTo(320,72-R);
+    lctx.arcTo(320,72,320-R,72,R);lctx.lineTo(R,72);
+    lctx.arcTo(0,72,0,72-R,R);lctx.lineTo(0,R);
+    lctx.arcTo(0,0,R,0,R);lctx.closePath();lctx.fill();
+    // Gold border
+    const goldBorder=lctx.createLinearGradient(0,0,320,0);
+    goldBorder.addColorStop(0,'rgba(210,170,60,0.9)');
+    goldBorder.addColorStop(0.5,'rgba(240,200,80,1)');
+    goldBorder.addColorStop(1,'rgba(180,140,40,0.8)');
+    lctx.strokeStyle=goldBorder;lctx.lineWidth=2;
+    lctx.beginPath();lctx.moveTo(R,0);lctx.lineTo(320-R,0);
+    lctx.arcTo(320,0,320,R,R);lctx.lineTo(320,72-R);
+    lctx.arcTo(320,72,320-R,72,R);lctx.lineTo(R,72);
+    lctx.arcTo(0,72,0,72-R,R);lctx.lineTo(0,R);
+    lctx.arcTo(0,0,R,0,R);lctx.closePath();lctx.stroke();
+    // Left gold badge area
+    const badgeGrad=lctx.createLinearGradient(0,0,0,72);
+    badgeGrad.addColorStop(0,'rgba(210,170,55,0.85)');
+    badgeGrad.addColorStop(1,'rgba(160,120,30,0.85)');
+    lctx.fillStyle=badgeGrad;
+    lctx.beginPath();lctx.moveTo(R,1);lctx.lineTo(60,1);
+    lctx.lineTo(60,71);lctx.lineTo(R,71);
+    lctx.arcTo(1,71,1,71-R,R);lctx.lineTo(1,R);
+    lctx.arcTo(1,1,R,1,R);lctx.closePath();lctx.fill();
+    // Badge separator line
+    lctx.strokeStyle='rgba(210,170,55,0.5)';lctx.lineWidth=1;
+    lctx.beginPath();lctx.moveTo(61,4);lctx.lineTo(61,68);lctx.stroke();
+    // Red dot in badge
+    lctx.beginPath();lctx.arc(30,36,9,0,Math.PI*2);
+    lctx.fillStyle='rgba(255,50,50,0.95)';lctx.fill();
+    lctx.beginPath();lctx.arc(30,36,11,0,Math.PI*2);
+    lctx.strokeStyle='rgba(255,255,255,0.35)';lctx.lineWidth=1.5;lctx.stroke();
+    // Main text
+    lctx.fillStyle='#ffffff';lctx.font='bold 26px Arial,sans-serif';
+    lctx.textAlign='left';lctx.textBaseline='middle';
+    lctx.shadowColor='rgba(0,0,0,0.6)';lctx.shadowBlur=4;
+    lctx.fillText('TAR UMT',76,36);
+    lctx.shadowBlur=0;
     const lsprite=new THREE.Sprite(
-      new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true})
+      new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,depthTest:false})
     );
-    lsprite.position.copy(latLngTo3D(LAT,LNG,1.18));
-    lsprite.scale.set(0.38,0.095,1);
+    lsprite.position.copy(latLngTo3D(LAT,LNG,1.20));
+    lsprite.scale.set(0.22,0.050,1);
     group.add(lsprite);
     // ─────────────────────────────────────────────────────────────────
 
@@ -1081,16 +1347,17 @@ function Globe3D({onClose}){
     }
     d.addEventListener('click',cl);
 
-    let aid;
+    let aid,_firstFrame=true;
     function animate(){
       aid=requestAnimationFrame(animate);
       if(!drag)ry+=.0015;
-      // Pulse animation
+      // Pulse animation (Sprite-based)
       const pt=performance.now()*0.001;
-      pulses.forEach(m=>{
-        const t=((pt*0.8+m.userData.phase)%1+1)%1;
-        m.scale.setScalar(1+t*2.5);
-        m.material.opacity=0.7*(1-t);
+      pulses.forEach(s=>{
+        const t=((pt*0.7+s.userData.phase)%1+1)%1;
+        const sc=0.09+t*0.22;
+        s.scale.set(sc,sc,1);
+        s.material.opacity=0.75*(1-t);
       });
       // Fly-to 缓动
       const fly=flyRef.current;
@@ -1109,6 +1376,7 @@ function Globe3D({onClose}){
       group.rotation.y=ry;group.rotation.x=rx;
       group.children.forEach(c=>{if(c.userData.isCloud)c.rotation.y+=.0002;});
       renderer.render(scene,camera);
+      if(_firstFrame){_firstFrame=false;setReady(true);}
     }
     animate();
 
@@ -1119,6 +1387,23 @@ function Globe3D({onClose}){
 
   return(
     <div ref={mountRef} style={{position:'fixed',inset:0,zIndex:100,background:'#000005'}}>
+      {!ready&&(
+        <div style={{position:'absolute',inset:0,zIndex:200,background:'#000005',
+          display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+          transition:'opacity .6s',opacity:1}}>
+          <img src="city-overview.png" alt="loading"
+            style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.55}}/>
+          <div style={{position:'absolute',bottom:40,left:'50%',transform:'translateX(-50%)',
+            display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+            <div style={{width:36,height:36,border:'3px solid rgba(0,229,160,0.25)',
+              borderTop:'3px solid #00e5a0',borderRadius:'50%',
+              animation:'globe-spin 0.9s linear infinite'}}/>
+            <span style={{color:'rgba(255,255,255,0.5)',fontSize:12,letterSpacing:2}}>
+              LOADING 3D GLOBE...
+            </span>
+          </div>
+        </div>
+      )}
       {showBldg&&(
         <div style={{position:'absolute',right:0,top:0,width:'62%',height:'100%',
           background:'rgba(7,9,15,0.96)',zIndex:110,
@@ -1141,7 +1426,112 @@ function Globe3D({onClose}){
           </div>
         </div>
       )}
-      <div style={{position:'absolute',bottom:20,right:20,zIndex:101,display:'flex',flexDirection:'column',gap:8,alignItems:'center'}}>
+      {showFloor&&<FloorView3D onClose={()=>setShowFloor(false)}/>}
+      {/* 3D Building Layers Drawer */}
+      {(()=>{
+        const af=FLOORS.find(f=>f.id===zbFloor)||FLOORS[5];
+        const isNeg=af.pct<0;
+        return(
+        <div style={{position:'absolute',top:0,left:0,width:400,height:'100%',zIndex:115,
+          background:'rgba(4,8,20,0.96)',backdropFilter:'blur(12px)',
+          borderRight:'1px solid rgba(0,229,160,0.18)',
+          transform:showZBldg?'translateX(0)':'translateX(-100%)',
+          transition:'transform .35s cubic-bezier(.4,0,.2,1)',
+          display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {/* drawer header */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+            padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 22 8 12 14 2 8"/>
+                <polyline points="2 8 2 16 12 22 22 16 22 8"/>
+                <line x1="12" y1="14" x2="12" y2="22"/>
+              </svg>
+              <span style={{color:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:700,letterSpacing:.5}}>Building 3D View</span>
+            </div>
+            <button onClick={()=>setShowZBldg(false)}
+              style={{width:30,height:30,borderRadius:'50%',background:'rgba(255,255,255,0.08)',
+                border:'1px solid rgba(255,255,255,0.15)',color:'#fff',fontSize:16,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+              {'\u2715'}
+            </button>
+          </div>
+          {/* floor tabs */}
+          <div style={{display:'flex',gap:5,padding:'12px 18px 8px',flexWrap:'wrap'}}>
+            {FLOORS.map(f=>(
+              <button key={f.id} onClick={()=>setZbFloor(f.id)}
+                style={{flex:'0 0 auto',padding:'4px 12px',borderRadius:5,fontSize:11,fontWeight:700,cursor:'pointer',
+                  background:zbFloor===f.id?'rgba(0,229,160,0.2)':'rgba(255,255,255,0.05)',
+                  border:zbFloor===f.id?'1px solid #00e5a0':'1px solid rgba(255,255,255,0.1)',
+                  color:zbFloor===f.id?'#00e5a0':'rgba(255,255,255,0.45)',transition:'all .15s'}}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {/* 3D image */}
+          <div style={{flex:1,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 16px'}}>
+            <div style={{position:'relative',width:'100%'}}>
+              <img src={'zbuilding3dimg/zbuilding3d-mr.png'} alt="building"
+                style={{width:'100%',height:'auto',objectFit:'contain',display:'block'}}
+                onError={e=>{e.target.style.display='none';}}/>
+              <img src={`zbuilding3dimg/zbuilding3d-l${zbFloor}.png`} alt={`floor ${zbFloor}`}
+                style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain',display:'block'}}
+                onError={e=>{e.target.style.display='none';}}/>
+            </div>
+          </div>
+          {/* data card */}
+          <div style={{margin:'0 18px 18px',background:'rgba(0,0,0,0.4)',
+            border:'1px solid rgba(0,229,160,0.25)',borderRadius:10,padding:'14px 16px'}}>
+            <div style={{color:'#00e5a0',fontSize:14,fontWeight:700,marginBottom:10}}>
+              {af.label} &nbsp;<span style={{color:'rgba(255,255,255,0.4)',fontWeight:400,fontSize:12}}>Floor Data</span>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px 0'}}>
+              <span style={{color:'rgba(255,255,255,0.45)',fontSize:11}}>Current consumption</span>
+              <span style={{color:'#fff',fontSize:13,fontWeight:600,textAlign:'right'}}>{af.consumption} <span style={{fontSize:10,color:'rgba(255,255,255,0.4)'}}>kWh</span></span>
+              <span style={{color:'rgba(255,255,255,0.45)',fontSize:11}}>After optimization</span>
+              <span style={{color:'#00e5a0',fontSize:13,fontWeight:600,textAlign:'right'}}>{af.optimized} <span style={{fontSize:10,color:'rgba(0,229,160,0.5)'}}>kWh</span></span>
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+              marginTop:10,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+              <span style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>Savings</span>
+              <span style={{fontSize:15,fontWeight:700,color:isNeg?'#ef4444':'#22c55e',
+                display:'flex',alignItems:'center',gap:6}}>
+                {isNeg?af.pct:`+${af.pct}`}%
+                <span style={{width:8,height:8,borderRadius:'50%',background:isNeg?'#ef4444':'#22c55e',display:'inline-block'}}/>
+              </span>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+      <div style={{position:'absolute',bottom:20,right:20,zIndex:116,display:'flex',flexDirection:'column',gap:8,alignItems:'center'}}>
+        <button onClick={()=>setShowFloor(v=>!v)} title="Floor 3D View"
+          style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,
+            background:showFloor?'rgba(0,180,255,0.28)':'rgba(0,150,220,0.12)',
+            border:showFloor?'1px solid #00ccff':'1px solid rgba(0,150,220,0.4)',
+            color:showFloor?'#00ccff':'#44aadd',cursor:'pointer',transition:'all .15s'}}
+          onMouseEnter={e=>{if(!showFloor)e.currentTarget.style.background='rgba(0,150,220,0.22)';}}
+          onMouseLeave={e=>{if(!showFloor)e.currentTarget.style.background='rgba(0,150,220,0.12)';}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </button>
+        <button onClick={()=>setShowZBldg(v=>!v)} title="3D Building Layers"
+          style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,
+            background:showZBldg?'rgba(0,229,160,0.28)':'rgba(0,200,150,0.15)',
+            border:showZBldg?'1px solid #00e5a0':'1px solid rgba(0,200,150,0.45)',
+            color:showZBldg?'#00e5a0':'#00c896',cursor:'pointer',transition:'all .15s'}}
+          onMouseEnter={e=>{if(!showZBldg)e.currentTarget.style.background='rgba(0,200,150,0.28)';}}
+          onMouseLeave={e=>{if(!showZBldg)e.currentTarget.style.background='rgba(0,200,150,0.15)';}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 22 8 12 14 2 8"/>
+            <polyline points="2 8 2 16 12 22 22 16 22 8"/>
+            <line x1="12" y1="14" x2="12" y2="22"/>
+          </svg>
+        </button>
         <button onClick={()=>window.open('3dview/viewer.html','_blank')}
           title="3D Building Model"
           style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,background:'rgba(0,229,160,0.12)',border:'1px solid rgba(0,229,160,0.35)',color:'#00e5a0',cursor:'pointer',transition:'background .15s'}}
@@ -1150,16 +1540,6 @@ function Globe3D({onClose}){
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </button>
-        <button onClick={()=>setShowBldg(true)} title="Building Floor View"
-          style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,background:'rgba(168,85,247,0.12)',border:'1px solid rgba(168,85,247,0.35)',color:'#d8b4fe',cursor:'pointer',transition:'background .15s'}}
-          onMouseEnter={e=>e.currentTarget.style.background='rgba(168,85,247,0.22)'}
-          onMouseLeave={e=>e.currentTarget.style.background='rgba(168,85,247,0.12)'}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-            <line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/>
           </svg>
         </button>
         <button onClick={onClose} style={{width:44,height:32,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:6,background:'rgba(59,130,246,0.25)',border:'1px solid rgba(59,130,246,0.55)',color:'#93c5fd',fontSize:11,fontWeight:700,cursor:'pointer'}}>2D</button>
@@ -1342,7 +1722,7 @@ function ViewModal({onClose,img}){
 /* ══════════════════ CITY VIEW IMAGES ═══════════════════════════ */
 const VIEW_IMGS={
   Building:'building3d-mm.png',
-  Zone:'zone-view.png',
+  Zone:'zone3dimg/Zone3dimg-l1.svg',
 };
 
 /* ══════════════════ BUILDING VIEW ═══════════════════════════════ */
@@ -1357,7 +1737,7 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
   const [zZone,setZZone]=useState('A');
   const [zHover,setZHover]=useState(false);
   const [zBFloor,setZBFloor]=useState(0);
-  const [zBImg,setZBImg]=useState('build3dimg/build3dimg-mr.png');
+  const [zBImg,setZBImg]=useState('zone3dimg/Zone3dimg-l1.svg');
   const [zBHover,setZBHover]=useState(false);
   const isBuilding=tab==='Floor';
   useEffect(()=>{
@@ -1368,10 +1748,10 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
     img.src=`newbuilding3dimg/newbuilding3d-l${bFloor}.png`;
   },[bFloor]);
   useEffect(()=>{
-    if(zBFloor===0){setZBImg('build3dimg/build3dimg-mr.png');return;}
+    if(zBFloor===0){setZBImg('zone3dimg/Zone3dimg-l1.svg');return;}
     const img=new Image();
     img.onload=()=>setZBImg(`build3dimg/build3dimg-l${zBFloor}.png`);
-    img.onerror=()=>setZBImg('build3dimg/build3dimg-mr.png');
+    img.onerror=()=>setZBImg('zone3dimg/Zone3dimg-l1.svg');
     img.src=`build3dimg/build3dimg-l${zBFloor}.png`;
   },[zBFloor]);
   return(
@@ -1413,7 +1793,7 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}/>
             </>
           ):(
-            <img src={tab==='Building'?bImg:tab==='Zone'?zBImg:VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center'}}/>
+            <img src={tab==='Building'?bImg:tab==='Zone'?zBImg:VIEW_IMGS[tab]} alt={tab} style={{width:'100%',height:'100%',objectFit: tab==='Zone'?'contain':'cover',objectPosition:'center',transform:tab==='Zone'?'scale(1)':'none',transformOrigin:'center center'}}/>
           )}
           <div style={{position:'absolute',inset:0,background:'rgba(7,13,26,.15)'}}/>
           {false&&tab==='Zone'&&(<>
