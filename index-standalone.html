@@ -104,6 +104,21 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 @keyframes starRock{0%{transform:rotate(-180deg)}50%{transform:rotate(180deg)}100%{transform:rotate(-180deg)}}
 .star-rock{animation:starRock 3.6s ease-in-out infinite;transform-origin:center}
 
+/* ── Mobile responsive ─────────────────────────────────────────── */
+@media (max-width:767px){
+  body{overflow:auto}
+  /* Map controls smaller on mobile */
+  .mc-btn{width:28px!important;height:28px!important}
+  /* AI detail modal full-screen on mobile */
+  .ai-modal-inner{width:calc(100vw - 24px)!important;max-height:85vh!important;border-radius:12px!important}
+  /* Stats cards 2-col on mobile (already 2×2 but tighter) */
+  .stats-grid{gap:8px!important;padding:8px!important}
+}
+@media (max-width:480px){
+  /* Even smaller phones */
+  .pa1,.pa2,.pa3,.pa4{animation-delay:0s!important}
+}
+
 .badge-green{display:inline-flex;align-items:center;gap:4px;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.28);border-radius:20px;padding:2px 7px;font-size:11px;font-weight:700;color:var(--green)}
 .dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block}
 .btn{border:none;cursor:pointer;border-radius:6px;font-size:12px;font-weight:600;transition:opacity .15s}
@@ -916,12 +931,25 @@ function Building3D({aiOpen=false}){
 }
 
 /* ══════════════════ FLOOR SELECTOR ══════════════════════════════ */
+/* ══════════════════ MOBILE HOOK ════════════════════════════════ */
+function useMobile(){
+  const [m,setM]=useState(()=>window.innerWidth<768);
+  useEffect(()=>{
+    const onR=()=>setM(window.innerWidth<768);
+    window.addEventListener('resize',onR);
+    return()=>window.removeEventListener('resize',onR);
+  },[]);
+  return m;
+}
+
 function FloorSelector({panelVisible=true}){
   const {active,setActive}=useE();
+  const isMobile=useMobile();
+  const leftPos=isMobile?8:(panelVisible?420:20);
   return(
-    <div style={{position:'absolute',left:panelVisible?420:20,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',gap:8,zIndex:10,width:36,transition:'left 0.4s cubic-bezier(0.4,0,0.2,1)'}}>
+    <div style={{position:'absolute',left:leftPos,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',gap:isMobile?4:8,zIndex:10,width:36,transition:'left 0.4s cubic-bezier(0.4,0,0.2,1)'}}>
       {[7,6,5,4,3,2,1].map((f,i)=>(
-        <button key={f} onClick={()=>setActive(f)} className="floor-in" style={{animationDelay:`${i*60}ms`,background:active===f?'#18191f':'none',border:'none',cursor:'pointer',fontSize:16,fontWeight:active===f?700:400,color:active===f?'#fff':'#8b9ab5',padding:'2px 4px',borderRadius:100,textAlign:'center',transition:'background .15s, color .15s, font-weight .15s'}}>{f}F</button>
+        <button key={f} onClick={()=>setActive(f)} className="floor-in" style={{animationDelay:`${i*60}ms`,background:active===f?'#18191f':'none',border:'none',cursor:'pointer',fontSize:isMobile?13:16,fontWeight:active===f?700:400,color:active===f?'#fff':'#8b9ab5',padding:'2px 4px',borderRadius:100,textAlign:'center',transition:'background .15s, color .15s, font-weight .15s'}}>{f}F</button>
       ))}
     </div>
   );
@@ -1522,10 +1550,10 @@ function Globe3D({onClose}){
           {/* 3D image */}
           <div style={{flex:1,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 16px'}}>
             <div style={{position:'relative',width:'100%'}}>
-              <img src={'zbuilding3dimg/zbuilding3d-mr.png'} alt="building"
+              <img src={'zbuilding3dimg/zbuilding3d-mr.jpg'} alt="building"
                 style={{width:'100%',height:'auto',objectFit:'contain',display:'block'}}
                 onError={e=>{e.target.style.display='none';}}/>
-              <img src={`zbuilding3dimg/zbuilding3d-l${zbFloor}.png`} alt={`floor ${zbFloor}`}
+              <img src={`zbuilding3dimg/zbuilding3d-l${zbFloor}.jpg`} alt={`floor ${zbFloor}`}
                 style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain',display:zbImgError?'none':'block'}}
                 onError={()=>setZbImgError(true)}/>
               {zbImgError&&(
@@ -1813,9 +1841,9 @@ function BuildingView({aiOpen=false,onToggle3D,onTogglePanel,panelVisible,onRefr
   },[zBFloor]);
   return(
     <div style={{position:'absolute',inset:0}}>
-      <div style={{position:'absolute',top:16,left:'50%',transform:`translateX(-50%) translateY(${tabBarVisible?0:-60}px)`,opacity:tabBarVisible?1:0,pointerEvents:tabBarVisible?'auto':'none',display:'flex',alignItems:'center',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',borderRadius:100,padding:'2px 6px 2px 2px',width:660,transition:'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .35s'}}>
+      <div style={{position:'absolute',top:16,left:'50%',transform:`translateX(-50%) translateY(${tabBarVisible?0:-60}px)`,opacity:tabBarVisible?1:0,pointerEvents:tabBarVisible?'auto':'none',display:'flex',alignItems:'center',gap:2,zIndex:10,background:'rgba(6,10,20,0.55)',borderRadius:100,padding:'2px 6px 2px 2px',width:'min(660px,calc(100vw - 120px))',overflowX:'auto',transition:'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .35s'}}>
         {['Campus','Building','Floor','Zone'].map(t=>{const a=t===tab;return(
-          <button key={t} onClick={()=>{setTab(t);setBearingVisible(false);onRefresh&&onRefresh();}} style={{flex:1,padding:'5px 16px',borderRadius:100,fontSize:16,fontWeight:a?700:400,color:a?'#fff':'rgba(255,255,255,0.85)',background:a?'#16171a':'transparent',border:'none',cursor:'pointer',transition:'all .15s'}}>{t}</button>
+          <button key={t} onClick={()=>{setTab(t);setBearingVisible(false);onRefresh&&onRefresh();}} style={{flex:1,padding:'5px 10px',borderRadius:100,fontSize:'clamp(12px,1.4vw,16px)',fontWeight:a?700:400,color:a?'#fff':'rgba(255,255,255,0.85)',background:a?'#16171a':'transparent',border:'none',cursor:'pointer',transition:'all .15s',whiteSpace:'nowrap'}}>{t}</button>
         );})}
       </div>
       {/* Tab bar toggle button — top right, left of app icon */}
@@ -2037,9 +2065,10 @@ function IntroScreen({onDone}){
 
 /* ══════════════════ APP ══════════════════════════════════════════ */
 function App(){
+  const isMobile=useMobile();
   const [intro,setIntro]=useState(true);
   const [show3D,setShow3D]=useState(false);
-  const [panelVisible,setPanelVisible]=useState(true);
+  const [panelVisible,setPanelVisible]=useState(()=>window.innerWidth>=768);
   const [panelKey,setPanelKey]=useState(0);
   useEffect(()=>{const el=document.getElementById('loading');if(el){el.style.opacity='0';setTimeout(()=>el.remove(),400);}}, []);
   const scrollRef=useRef(null);
@@ -2059,10 +2088,24 @@ function App(){
       <div style={{position:'relative',height:'100vh',overflow:'hidden'}}>
         <BuildingView onToggle3D={()=>setShow3D(true)} onTogglePanel={()=>setPanelVisible(v=>!v)} panelVisible={panelVisible}
           onRefresh={()=>setPanelKey(k=>k+1)}/>
-        <div ref={scrollRef} className="panel-scroll" onScroll={handlePanelScroll} style={{position:'absolute',left:0,top:0,width:420,height:'100%',display:'flex',flexDirection:'column',gap:8,padding:20,overflowY:'auto',overflowX:'hidden',zIndex:5,
+        <div ref={scrollRef} className="panel-scroll" onScroll={handlePanelScroll} style={isMobile?{
+          position:'fixed',bottom:0,left:0,right:0,width:'100%',height:'68vh',
+          display:'flex',flexDirection:'column',gap:8,padding:'8px 16px 20px',
+          overflowY:'auto',overflowX:'hidden',zIndex:20,
+          background:'rgba(7,9,15,0.97)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',
+          borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(77,138,240,0.2)',
+          transform:panelVisible?'translateY(0)':'translateY(100%)',
+          transition:'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
+          pointerEvents:panelVisible?'auto':'none',
+        }:{
+          position:'absolute',left:0,top:0,width:420,height:'100%',
+          display:'flex',flexDirection:'column',gap:8,padding:20,
+          overflowY:'auto',overflowX:'hidden',zIndex:5,
           transform:panelVisible?'translateX(0)':'translateX(-440px)',
           transition:'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
-          pointerEvents:panelVisible?'auto':'none'}}>
+          pointerEvents:panelVisible?'auto':'none',
+        }}>
+          {isMobile&&<div style={{width:36,height:4,borderRadius:2,background:'rgba(255,255,255,0.2)',margin:'0 auto 8px',flexShrink:0}}/>}
           <React.Fragment key={panelKey}>
             <AISuggestionPanel/>
             <EnergyChart/>
@@ -2070,6 +2113,11 @@ function App(){
             <SavingsChart/>
           </React.Fragment>
         </div>
+        {/* Mobile panel toggle button */}
+        {isMobile&&<button onClick={()=>setPanelVisible(v=>!v)} style={{position:'fixed',bottom:panelVisible?'calc(68vh - 1px)':16,left:'50%',transform:'translateX(-50%)',zIndex:21,display:'flex',alignItems:'center',gap:6,padding:'7px 16px',borderRadius:20,background:'rgba(13,21,36,0.95)',border:'1px solid rgba(77,138,240,0.3)',color:'rgba(255,255,255,0.85)',fontSize:12,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',transition:'bottom 0.4s cubic-bezier(0.4,0,0.2,1)',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{transform:panelVisible?'rotate(180deg)':'none',transition:'transform .3s'}}><polyline points="18 15 12 9 6 15"/></svg>
+          {panelVisible?'Hide Data':'Show Data'}
+        </button>}
         <a href="rd/RunDo-ECM-v0.6-2026-03-31.html" target="_blank"
           style={{position:'absolute',top:16,right:16,zIndex:50,width:36,height:36,borderRadius:18,background:'linear-gradient(135deg,rgba(143,231,163,0.12) 0%,rgba(23,204,200,0.12) 100%)',border:'1px solid rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)',cursor:'pointer',textDecoration:'none',transition:'box-shadow .2s'}}
           onMouseEnter={e=>e.currentTarget.style.boxShadow='0 0 14px rgba(23,204,200,0.5)'}
